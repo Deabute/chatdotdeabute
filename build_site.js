@@ -25,3 +25,5 @@ Metalsmith(__dirname)
       }
   }))
   .build(function(error, files){if(error){throw error;}});
+
+if(process.env.TESTING === 't'){require('./static_server.js')();} // run static server if testing

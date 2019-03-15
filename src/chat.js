@@ -294,39 +294,8 @@ var prompt = {
     }
 };
 
-var persistence = {
-    answers: [],
-    init: function(onStorageLoad){
-        if(localStorage){
-            if(!localStorage.oid){localStorage.oid = persistence.createOid();}
-            if(!localStorage.username){localStorage.username = 'Anonymous';}
-            if(localStorage.answers){persistence.answers = JSON.parse(localStorage.answers);}
-            else                    {localStorage.answers = JSON.stringify(persistence.answers);}
-            if(localStorage.lastMatches){
-                if(serviceTime.WINDOW === 't'){localStorage.lastMatches = '[""]';}
-                else {rtc.lastMatches = JSON.parse(localStorage.lastMatches);}
-            } else {
-                if(serviceTime.WINDOW === 't'){localStorage.lastMatches = '[""]';}
-                else {localStorage.lastMatches = JSON.stringify(rtc.lastMatches);}
-            }
-            onStorageLoad(true);
-        } else { onStorageLoad(false); }
-    },
-    saveAnswer: function(){
-        localStorage.answers = JSON.stringify(persistence.answers);
-    },
-    createOid: function(){
-        var increment = Math.floor(Math.random() * (16777216)).toString(16);
-        var pid = Math.floor(Math.random() * (65536)).toString(16);
-        var machine = Math.floor(Math.random() * (16777216)).toString(16);
-        var timestamp =  Math.floor(new Date().valueOf() / 1000).toString(16);
-        return '00000000'.substr(0, 8 - timestamp.length) + timestamp + '000000'.substr(0, 6 - machine.length) + machine +
-               '0000'.substr(0, 4 - pid.length) + pid + '000000'.substr(0, 6 - increment.length) + increment;
-    },
-};
-
 var DAY_OF_WEEK = 5;
-var HOUR_OF_DAY = 14;
+var HOUR_OF_DAY = 16;
 var CONSENT_MINUTE = 59;
 var OPEN_MINUTE = CONSENT_MINUTE - 10;
 var CONFLUENCE_MINUTE = CONSENT_MINUTE;
@@ -428,6 +397,35 @@ var serviceTime = {
     }
 };
 
+var persistence = {
+    answers: [],
+    init: function(onStorageLoad){
+        if(localStorage){
+            if(!localStorage.oid){localStorage.oid = persistence.createOid();}
+            if(!localStorage.username){localStorage.username = 'Anonymous';}
+            if(localStorage.answers){persistence.answers = JSON.parse(localStorage.answers);}
+            else                    {localStorage.answers = JSON.stringify(persistence.answers);}
+            // if(localStorage.lastMatches){
+            //     console.log(serviceTime.WINDOW);
+            //     if(serviceTime.WINDOW === 't'){localStorage.lastMatches = '[""]'; console.log('defulting last matches to nothing');}
+            //     else {rtc.lastMatches = JSON.parse(localStorage.lastMatches);}
+            // } else { localStorage.lastMatches = JSON.stringify(rtc.lastMatches);}
+            onStorageLoad(true);
+        } else { onStorageLoad(false); }
+    },
+    saveAnswer: function(){
+        localStorage.answers = JSON.stringify(persistence.answers);
+    },
+    createOid: function(){
+        var increment = Math.floor(Math.random() * (16777216)).toString(16);
+        var pid = Math.floor(Math.random() * (65536)).toString(16);
+        var machine = Math.floor(Math.random() * (16777216)).toString(16);
+        var timestamp =  Math.floor(new Date().valueOf() / 1000).toString(16);
+        return '00000000'.substr(0, 8 - timestamp.length) + timestamp + '000000'.substr(0, 6 - machine.length) + machine +
+               '0000'.substr(0, 4 - pid.length) + pid + '000000'.substr(0, 6 - increment.length) + increment;
+    },
+};
+
 var app = {
     setupInput: document.getElementById('setupInput'),
     setupButton: document.getElementById('setupButton'),
@@ -443,7 +441,8 @@ var app = {
                         if(ws.connected){dataPeer.close();ws.reduce(false);}
                         app.clearTimeouts();
                     });
-                    serviceTime.outside();
+                    ws.onConnection = app.consent;
+                    app.proposition(); // serviceTime.outside();
                 } else {app.discription.innerHTML = 'Incompatible browser';}
             });
         });
