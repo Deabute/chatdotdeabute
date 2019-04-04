@@ -1,5 +1,5 @@
 // rtctest.js ~ copyright 2019 Paul Beaudet ~ MIT License
-// rtcSignal version - 1.0.24
+// rtcSignal version - 1.0.28
 // This test requires at least two browser windows, to open a data connection between two peer
 var rtc = { // stun servers in config allow client to introspect a communication path to offer a remote peer
     config: {'iceServers': [ {'urls': 'stun:stun.stunprotocol.org:3478'}, {'urls': 'stun:stun.l.google.com:19302'} ]},
@@ -7,16 +7,24 @@ var rtc = { // stun servers in config allow client to introspect a communication
     peer: null,                                                 // placeholder for parent webRTC object instance
     connectionId: '',                                           // oid of peer we are connected w/
     lastPeer: '',
+    connectionGwid: '',
+    candidates: [],
+    onIce: function(event){  // on address info being introspected (after local discription is set)
+        if(event.candidate){ // canididate property denotes data as multiple candidates can resolve
+            rtc.candidates.push(event.candidate);
+        } else {
+            if(rtc.connectionGwid){
+                ws.send({type: 'ice', oid: localStorage.oid, candidates: rtc.candidates, gwid: rtc.connectionGwid});
+                rtc.candidates = []; // remove it once we send it
+            } else {setTimeout(function(){rtc.onIce(event);}, 50);}
+        }
+    }, // Note that sdp is going to be negotiated first regardless of any media being involved. its faster to resolve, maybe?
     init: function(onSetupCB){                                  // varify mediastream before calling
         rtc.peer = new RTCPeerConnection(rtc.config);           // create new instance for local client
         media.stream.getTracks().forEach(function(track){rtc.peer.addTrack(track, media.stream);});
         rtc.peer.ontrack = media.ontrack;                       // behavior upon reciving track
         dataPeer.channel = rtc.peer.createDataChannel('chat');  // Creates data endpoint for client's side of connection
-        rtc.peer.onicecandidate = function onIce(event) {       // on address info being introspected (after local discription is set)
-            if(event.candidate){                                // canididate property denotes data as multiple candidates can resolve
-                ws.send({type: 'ice', oid: localStorage.oid, candidate: event.candidate});
-            }                                                   // null event.candidate means we finished recieving candidates
-        };    // Also note that sdp is going to be negotiated first regardless of any media being involved. its faster to resolve
+        rtc.peer.onicecandidate = rtc.onIce;                    // Handle ice canidate at any random time they decide to come
         rtc.peer.ondatachannel = dataPeer.newChannel;           // creates data endpoints for remote peer on rtc connection
         onSetupCB();                                            // create and offer or answer depending on what intiated
     },
@@ -28,14 +36,15 @@ var rtc = { // stun servers in config allow client to introspect a communication
             console.log('making offer');
         });
     },
-    giveAnswer: function(sdp, oidFromOffer){
+    giveAnswer: function(sdp, oidFromOffer, gwidOfPartner){
         rtc.peer.setRemoteDescription(sdp);
         rtc.connectionId = oidFromOffer;
+        rtc.connectionGwid = gwidOfPartner;
         rtc.peer.createAnswer().then(function onAnswer(answer){ // create answer to remote peer that offered
             return rtc.peer.setLocalDescription(answer);        // set that offer as our local discripion
         }).then(function onOfferSetDesc(){
             console.log('sending answer to ' + oidFromOffer);
-            ws.send({type: 'answer', oid: localStorage.oid, sdp: rtc.peer.localDescription, peerId: oidFromOffer}); // send offer to friend
+            ws.send({type: 'answer', oid: localStorage.oid, sdp: rtc.peer.localDescription, peerId: oidFromOffer, gwid: gwidOfPartner}); // send offer to friend
         });                                                     // note answer is shown to user in onicecandidate event above once resolved
     },
     close: function(talking){
@@ -49,6 +58,7 @@ var rtc = { // stun servers in config allow client to introspect a communication
         }
         rtc.lastPeer = rtc.connectionId;
         rtc.connectionId = '';
+        rtc.connectionGwid = '';
     }
 };
 
@@ -172,12 +182,13 @@ var ws = {
         try {req = JSON.parse(event.data);} // probably should be wrapped in error handler
         catch(error){}                   // if error we don't care there is a default object
         if(req.type === 'offer'){
-            rtc.init(function onInit(){rtc.giveAnswer(req.sdp, req.id);});
+            rtc.init(function onInit(){rtc.giveAnswer(req.sdp, req.id, req.gwid);});
         } else if(req.type === 'answer'){
             rtc.connectionId = req.id;
+            rtc.connectionGwid = req.gwid;
             rtc.peer.setRemoteDescription(req.sdp);
         } else if(req.type === 'ice'){
-            rtc.peer.addIceCandidate(req.candidate);
+            for(var i = 0; i < req.candidates.length; i++){rtc.peer.addIceCandidate(req.candidates[i]);}
         } else if(req.type === 'makeOffer'){
             if(req.pool){pool.set(req.pool);}
             rtc.init(rtc.createOffer);
@@ -216,18 +227,13 @@ var media = {
     init: function(onMedia){ // get user permistion to use media
         var onMediaCallback = onMedia ? onMedia : function noSoupForYou(){};
         navigator.mediaDevices.getUserMedia({audio: true, video: false}).then(function gotMedia(mediaStream){
-            if(typeof mediaStream === 'object'){
-                if(Object.entries(mediaStream).length === 0 && mediaStream.constructor === Object){
-                    onMediaCallback('No Media', null);
-                } else {
-                    media.stream = mediaStream;
-                    var audioTracks = mediaStream.getAudioTracks();
-                    if(audioTracks.length){
-                        if(audioTracks[0].enabled){ onMediaCallback(null, mediaStream); audioTracks[0].enabled = false;}
-                        else { onMediaCallback('Microphone muted', null);}
-                    } else {onMediaCallback('No audio tracks', null);}
-                }
-            } else {onMediaCallback('No Media', null);}
+            console.log('got media');
+            media.stream = mediaStream;
+            var audioTracks = mediaStream.getAudioTracks();
+            if(audioTracks.length){
+                if(audioTracks[0].enabled){onMediaCallback(null, mediaStream); audioTracks[0].enabled = false;}
+                else                      {onMediaCallback('Microphone muted', null);}
+            } else {onMediaCallback('woah! no audio', null);}
         }).catch(function onNoMedia(error){onMediaCallback(error, null);});
     },
     ontrack: function(event){media.output.srcObject = event.streams[0];},
@@ -294,9 +300,40 @@ var prompt = {
     }
 };
 
-var DAY_OF_WEEK = 5;
-var HOUR_OF_DAY = 16;
-var CONSENT_MINUTE = 59;
+var persistence = {
+    answers: [],
+    init: function(onStorageLoad){
+        if(localStorage){
+            if(!localStorage.oid){localStorage.oid = persistence.createOid();}
+            if(!localStorage.username){localStorage.username = 'Anonymous';}
+            if(localStorage.answers){persistence.answers = JSON.parse(localStorage.answers);}
+            else                    {localStorage.answers = JSON.stringify(persistence.answers);}
+            if(localStorage.lastMatches){
+                if(serviceTime.WINDOW === 't'){localStorage.lastMatches = '[""]';}
+                else {rtc.lastMatches = JSON.parse(localStorage.lastMatches);}
+            } else {
+                if(serviceTime.WINDOW === 't'){localStorage.lastMatches = '[""]';}
+                else {localStorage.lastMatches = JSON.stringify(rtc.lastMatches);}
+            }
+            onStorageLoad(true);
+        } else { onStorageLoad(false); }
+    },
+    saveAnswer: function(){
+        localStorage.answers = JSON.stringify(persistence.answers);
+    },
+    createOid: function(){
+        var increment = Math.floor(Math.random() * (16777216)).toString(16);
+        var pid = Math.floor(Math.random() * (65536)).toString(16);
+        var machine = Math.floor(Math.random() * (16777216)).toString(16);
+        var timestamp =  Math.floor(new Date().valueOf() / 1000).toString(16);
+        return '00000000'.substr(0, 8 - timestamp.length) + timestamp + '000000'.substr(0, 6 - machine.length) + machine +
+               '0000'.substr(0, 4 - pid.length) + pid + '000000'.substr(0, 6 - increment.length) + increment;
+    },
+};
+
+var DAY_OF_WEEK = 4;
+var HOUR_OF_DAY = 13;
+var CONSENT_MINUTE = 11;
 var OPEN_MINUTE = CONSENT_MINUTE - 10;
 var CONFLUENCE_MINUTE = CONSENT_MINUTE;
 var CONSENT_SECOND = 3600 - (CONSENT_MINUTE * 60 + TIME_FOR_CONSENT);
@@ -397,35 +434,6 @@ var serviceTime = {
     }
 };
 
-var persistence = {
-    answers: [],
-    init: function(onStorageLoad){
-        if(localStorage){
-            if(!localStorage.oid){localStorage.oid = persistence.createOid();}
-            if(!localStorage.username){localStorage.username = 'Anonymous';}
-            if(localStorage.answers){persistence.answers = JSON.parse(localStorage.answers);}
-            else                    {localStorage.answers = JSON.stringify(persistence.answers);}
-            // if(localStorage.lastMatches){
-            //     console.log(serviceTime.WINDOW);
-            //     if(serviceTime.WINDOW === 't'){localStorage.lastMatches = '[""]'; console.log('defulting last matches to nothing');}
-            //     else {rtc.lastMatches = JSON.parse(localStorage.lastMatches);}
-            // } else { localStorage.lastMatches = JSON.stringify(rtc.lastMatches);}
-            onStorageLoad(true);
-        } else { onStorageLoad(false); }
-    },
-    saveAnswer: function(){
-        localStorage.answers = JSON.stringify(persistence.answers);
-    },
-    createOid: function(){
-        var increment = Math.floor(Math.random() * (16777216)).toString(16);
-        var pid = Math.floor(Math.random() * (65536)).toString(16);
-        var machine = Math.floor(Math.random() * (16777216)).toString(16);
-        var timestamp =  Math.floor(new Date().valueOf() / 1000).toString(16);
-        return '00000000'.substr(0, 8 - timestamp.length) + timestamp + '000000'.substr(0, 6 - machine.length) + machine +
-               '0000'.substr(0, 4 - pid.length) + pid + '000000'.substr(0, 6 - increment.length) + increment;
-    },
-};
-
 var app = {
     setupInput: document.getElementById('setupInput'),
     setupButton: document.getElementById('setupButton'),
@@ -441,8 +449,7 @@ var app = {
                         if(ws.connected){dataPeer.close();ws.reduce(false);}
                         app.clearTimeouts();
                     });
-                    ws.onConnection = app.consent;
-                    app.proposition(); // serviceTime.outside();
+                    serviceTime.outside();
                 } else {app.discription.innerHTML = 'Incompatible browser';}
             });
         });
@@ -466,7 +473,8 @@ var app = {
         } else { app.setupButton.innerHTML = 'Enter name, allow microphone'; }
     },
     issue: function(issue){
-        app.discription.innerHTML = 'Sorry, Possible solutions: Unmute, allow microphone in address bar, reload, or use chrome/firefox. Error: ' + issue;
+        console.log(issue);
+        app.discription.innerHTML = 'Sorry maybe, Unmute, remove restriction of microphone in address bar and try again, reload, or use chrome/firefox?';
         app.setupButton.hidden = false;
     },
     setup: function(){
@@ -474,9 +482,10 @@ var app = {
         app.discription.innerHTML = 'Please allow Microphone, in order to connect';
         localStorage.username = app.setupInput.value;
         app.setupInput.hidden = true;
-        media.init(function onAction(issue, mediaStream){
-            if(issue){app.issue(issue);}
-            else     {ws.init();}
+        media.init(function onMic(issue, mediaStream){
+            if(issue)            {app.issue(issue);}
+            else if (mediaStream){ws.init();}
+            else                 {app.issue('No media stream present');}
         });
     },
     disconnect: function(human){
