@@ -10,6 +10,7 @@ Metalsmith(__dirname)
       description: "A place to find hiking partners",
       url: process.env.SITE_URL,
       socketserver: process.env.SOCKET_SERVER,
+      accountserver: process.env.ACCOUNT_SERVER,
       testing: process.env.TESTING,
   })
   .source('./src')
