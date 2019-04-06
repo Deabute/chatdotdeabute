@@ -75,3 +75,15 @@ var deabute = {
         } else {console.log('missing shit');}
     }
 };
+
+var lobby = {
+    address: document.getElementById('lobby'),
+    init: function(){
+        var route = window.location.href.split('/')[3];
+        if(route){
+            lobby.address.innerHTML = 'Welcome to the route ' + route;
+        }
+    }
+};
+
+lobby.init();
