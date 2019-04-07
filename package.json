@@ -1,7 +1,7 @@
 {
   "name": "static-site-example",
   "private": true,
-  "version": "1.0.9",
+  "version": "1.0.10",
   "dependencies": {
     "express": "^4.16.4",
     "jstransformer-nunjucks": "^0.5.0",
