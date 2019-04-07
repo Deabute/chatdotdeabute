@@ -1,6 +1,5 @@
 // lobby.js ~ copyright 2019 ~ Paul Beaduet
 
-
 var lobby = {
     address: document.getElementById('lobby'),
     init: function(){

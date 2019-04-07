@@ -1,8 +1,57 @@
 ---
 layout: layout.njk
-title: index
+title: Deabute Chat
 ---
 
-<p>{{ url }}</p>
-<p>{{ socketserver }}</p>
-<p>{{ testing }}</p>
+<span style="float:left" id="sessionInd">
+    <label for="timebox"> Next Matching Session:</label>
+    <span name="timebox" id="timebox">¯\_(ツ)_/¯</span>
+</span>
+<span style="float:right">
+    <button onclick="deabute.signupSel()" id="signup">Signup</button>
+    <div id='signupBox' hidden>
+        <label for="susername">Username </label>
+        <input type="text" id="susername"></input>
+        <br>
+        <label for="spassword">Password </label>
+        <input type="password" id="spassword"></input>
+        <br>
+        <button onclick="deabute.signup()">Signup</button>
+    </div>
+    <button onclick="deabute.loginSel()" id="login" hidden>Login</button>
+    <div id='loginBox' hidden>
+        <label for="lusername">Username </label>
+        <input type="text" id="lusername"></input>
+        <br>
+        <label for="lpassword">Password </label>
+        <input type="password" id="lpassword"></input>
+        <br>
+        <button onclick="deabute.login()">Login</button>
+    </div>
+</span>
+<span hidden>
+    <label for="pool">Pool:</label>
+    <span name="pool" id="pool">?</span>
+</span>
+<br>
+<br>
+<span id="discription" style="float:left">Welcome! This is an app that connects you with new people through voice</span>
+<form id="promptForm" hidden>
+    <p id="promptFeild"></p>
+    <div id='formAnswers'></div>
+    <button type="submit">Submit</button>
+</form>
+<br>
+<textarea id="setupInput" rows="1" cols="16">Anonymous</textarea>
+<button onclick="app.setup()" type="button" id='setupButton'></button>
+<br>
+<button type="button" id='connectButton' hidden></button>
+<div id="meta" hidden>
+    <p id="socketserver"> {{ socketserver }} </p>
+    <p id="accountserver"> {{ accountserver }} </p>
+    <p id="serviceWindow"> {{ testing }} </p>
+</div>
+<audio id="mediaStream" autoplay> unsuported </audio>
+
+<script type="text/javascript" src="{{ url }}/js/deabute.js"></script>
+<script type="text/javascript" src="{{ url }}/js/chat.js"></script>
