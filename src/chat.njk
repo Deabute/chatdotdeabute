@@ -1,6 +1,6 @@
 ---
-layout: layout.njk
-title: chat
+layout: lf.njk
+title: Lonely Friday
 ---
 
 <span style="float:left" id="sessionInd">
@@ -24,10 +24,6 @@ title: chat
 <button onclick="app.setup()" type="button" id='setupButton'></button>
 <br>
 <button type="button" id='connectButton' hidden></button>
-<div id="meta" hidden>
-    <p id=socketserver> {{ socketserver }} </p>
-    <p id=serviceWindow> {{ testing }} </p>
-</div>
 <audio id="mediaStream" autoplay> unsuported </audio>
 
 <script type="text/javascript" src="{{ url }}/js/chat.js"></script>

@@ -1,0 +1,38 @@
+<!doctype html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta charset="utf-8">
+    <title>{{ title }}</title>
+    <link rel="shortcut icon" type="image/x-icon" href="/img/favicon.ico">
+</head>
+<body>
+    <div id="loginsignup" style="float:right">
+        <div id="accountOptions">
+            <button onclick="deabute.signup()" id="signup">Signup</button>
+            <span> - or - </span>
+            <button onclick="deabute.login()" id="signup">Signup</button>
+        </div>
+        <div id='credBox' hidden>
+            <label for="username">Username </label>
+            <input type="text" id="username"></input>
+            <br>
+            <label for="password">Password </label>
+            <input type="password" id="password"></input>
+            <br>
+            <button onclick="deabute.submit()">Signup</button>
+        </div>
+    </div>
+    <h3>Deabute Chat</h3>
+    <br>
+    <div> {{ contents | safe }}</div>
+    <div id="meta" hidden>
+        <p id="socketserver"> {{ socketserver }} </p>
+        <p id="accountserver"> {{ accountserver }} </p>
+        <p id="serviceWindow"> {{ testing }} </p>
+    </div>
+    <script type="text/javascript" src="{{ url }}/js/deabute.js"></script>
+    <script type="text/javascript" src="{{ url }}/js/rtcsignals.js"></script>
+    <script type="text/javascript" src="{{ url }}/js/lobby.js"></script>
+</body>
+</html>

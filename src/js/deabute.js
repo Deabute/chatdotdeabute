@@ -18,15 +18,19 @@ var wsDeabute = {
             onConnection();
         };
     },
+    handlers: [
+        {action: 'msg', func: function(req){console.log(req.msg);}},
+    ],
     incoming: function(event){           // handle incoming socket messages
-        console.log(event.data);
         var req = {action: null};          // request
         try {req = JSON.parse(event.data);}catch(error){}
-        if(req.action === 'msg'){
-            console.log('incomming socket message: ' + req.msg);
-        } else if(req.action === 'fail'){
-            // don't do the thing
+        for(var h=0; h < ws.handlers.length; h++){
+            if(req.action === ws.handlers[h].action){
+                ws.handlers[h].func(req);
+                return;
+            }
         }
+        console.log('no handler ' + event.data);
     },
     send: function(msg){
         try{msg = JSON.stringify(msg);} catch(error){msg = {action:'error', error: error};}
@@ -44,13 +48,15 @@ var deabute = {
     password: document.getElementById('password'),
     accountOptions: document.getElementById('accountOptions'),
     credBox: document.getElementById('credBox'),
+    status: document.getElementById('accountStatus'),
     accountAction: 'signup',
-    login: function(){deabute.connecte('login');},
+    login: function(){deabute.connect('login');},
     signup: function(){deabute.connect('signup');},
     connect: function(action){
         deabute.accountAction = action;
         accountOptions.hidden = true;
         wsDeabute.init(function(){
+            deabute.status.hidden = false;
             deabute.credBox.hidden = false; // show sign up box
         });
     },
@@ -61,5 +67,21 @@ var deabute = {
             deabute.credBox.hidden = true;
             wsDeabute.send({action: deabute.accountAction, username: username, password: password});
         } else {console.log('missing creds');}
+    },
+    init: function(){
+        wsDeabute.handlers.push({action: 'loggedin', func: deabute.onLogin});
+        wsDeabute.handlers.push({action: 'signedup', func: deabute.onSignup});
+        wsDeabute.handlers.push({action: 'fail', func: deabute.onFail});
+    },
+    onLogin: function(req){
+        deabute.status.innerHTML = req.msg;
+    },
+    onSignup: function(req){
+        deabute.status.innerHTML = req.msg;
+    },
+    onFail: function(req){
+        deabute.status.innerHTML = req.msg;
     }
 };
+
+deabute.init();

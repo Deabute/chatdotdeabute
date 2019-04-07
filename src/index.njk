@@ -1,33 +1,7 @@
 ---
-layout: layout.njk
+layout: dropin.njk
 title: Deabute Chat
 ---
 
-<span style="float:left" id="sessionInd">
-    <label for="timebox"> Next Matching Session:</label>
-    <span name="timebox" id="timebox">¯\_(ツ)_/¯</span>
-</span>
 
-<span hidden>
-    <label for="pool">Pool:</label>
-    <span name="pool" id="pool">?</span>
-</span>
-<br>
-<br>
-<span id="discription" style="float:left">Welcome! This is an app that connects you with new people through voice</span>
-<form id="promptForm" hidden>
-    <p id="promptFeild"></p>
-    <div id='formAnswers'></div>
-    <button type="submit">Submit</button>
-</form>
-<br>
-<textarea id="setupInput" rows="1" cols="16">Anonymous</textarea>
-<button onclick="app.setup()" type="button" id='setupButton'></button>
-<br>
-<button type="button" id='connectButton' hidden></button>
-<div id="meta" hidden>
-    <p id="socketserver"> {{ socketserver }} </p>
-    <p id="accountserver"> {{ accountserver }} </p>
-    <p id="serviceWindow"> {{ testing }} </p>
-</div>
 <audio id="mediaStream" autoplay> unsuported </audio>
