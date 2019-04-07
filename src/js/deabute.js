@@ -24,9 +24,9 @@ var wsDeabute = {
     incoming: function(event){           // handle incoming socket messages
         var req = {action: null};          // request
         try {req = JSON.parse(event.data);}catch(error){}
-        for(var h=0; h < ws.handlers.length; h++){
-            if(req.action === ws.handlers[h].action){
-                ws.handlers[h].func(req);
+        for(var h=0; h < wsDeabute.handlers.length; h++){
+            if(req.action === wsDeabute.handlers[h].action){
+                wsDeabute.handlers[h].func(req);
                 return;
             }
         }
@@ -42,6 +42,7 @@ var wsDeabute = {
 };
 
 var deabute = {
+    token: '',
     signupButton: document.getElementById('signup'),
     loginButton: document.getElementById('login'),
     username: document.getElementById('username'),
@@ -50,23 +51,26 @@ var deabute = {
     credBox: document.getElementById('credBox'),
     status: document.getElementById('accountStatus'),
     accountAction: 'signup',
-    login: function(){deabute.connect('login');},
-    signup: function(){deabute.connect('signup');},
-    connect: function(action){
+    login: function(){deabute.display('login');},
+    signup: function(){deabute.display('signup');},
+    display: function(action){
         deabute.accountAction = action;
         accountOptions.hidden = true;
-        wsDeabute.init(function(){
+        if(wsDeabute.connected){
             deabute.status.hidden = false;
             deabute.credBox.hidden = false; // show sign up box
-        });
+        } else {
+            deabute.status.innerHTML = 'sorry, issue communicating: reload page';
+        }
     },
     submit: function(){
-        var username = deabute.username.value;
-        var password = deabute.password.value;
-        if(username && password){
-            deabute.credBox.hidden = true;
-            wsDeabute.send({action: deabute.accountAction, username: username, password: password});
-        } else {console.log('missing creds');}
+        var regex = /^[a-z]+$/;                                         // make sure there are only lowercase a-z to the last letter
+        if(deabute.username.value && deabute.password.value){
+            if(regex.test(deabute.username.value)){
+                deabute.credBox.hidden = true;
+                wsDeabute.send({action: deabute.accountAction, username: deabute.username.value, password: deabute.password.value});
+            } else {deabute.status.innerHTML = 'Username must be lowercase letters';}
+        } else {deabute.status.innerHTML = 'Missing information';}
     },
     init: function(){
         wsDeabute.handlers.push({action: 'loggedin', func: deabute.onLogin});
@@ -74,14 +78,22 @@ var deabute = {
         wsDeabute.handlers.push({action: 'fail', func: deabute.onFail});
     },
     onLogin: function(req){
-        deabute.status.innerHTML = req.msg;
+        if(deabute.username.value === lobby.name){
+            deabute.status.innerHTML = deabute.username.value + ' welcome to your lobby';
+        } else {
+            deabute.status.innerHTML = deabute.username.value + ' Welcome to ' + lobby.name + '\'s lobby';
+        }
+        deabute.token = req.token;
     },
     onSignup: function(req){
-        deabute.status.innerHTML = req.msg;
+        deabute.status.innerHTML = req.msg + ' login now';
+        deabute.accountAction = 'login';
+        deabute.credBox.hidden = false;
     },
     onFail: function(req){
         deabute.status.innerHTML = req.msg;
     }
 };
 
+wsDeabute.init();
 deabute.init();
