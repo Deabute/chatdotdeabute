@@ -1,4 +1,26 @@
 // deabute.js ~ copyright 2019 ~ Paul Beaduet
+
+var lobby = {
+    address: document.getElementById('lobby'),
+    name: '',
+    init: function(onDetermine){
+        var addressArray =  window.location.href.split('/');
+        if(addressArray.length === 4){
+            var route = addressArray[3];
+            var regex = /^[a-z]+$/;                                         // make sure there are only lowercase a-z to the last letter
+            if(regex.test(route)){
+                lobby.name = route;
+                onDetermine();
+            } else {console.log('route has to be lower case letters');}
+        } else { console.log('address too long to be a route');}
+    },
+    status: function(req){
+        if(req.isLobby){
+            lobby.address.innerHTML = lobby.name + ' is ' + req.status;
+        }
+    }
+};
+
 var wsDeabute = {
     active: false,
     instance: null,                                // placeholder for websocket object
@@ -95,5 +117,10 @@ var deabute = {
     }
 };
 
-wsDeabute.init();
-deabute.init();
+lobby.init(function(){
+    wsDeabute.init(function(){
+        wsDeabute.send({action: 'status', lobby: lobby.name});
+    });
+    wsDeabute.handlers.push({action: 'status', func: lobby.status});
+    deabute.init();
+});
