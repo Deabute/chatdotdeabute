@@ -7,6 +7,27 @@
     <link rel="shortcut icon" type="image/x-icon" href="/favicon.ico">
 </head>
 <body>
-    {{ contents | safe }}
+    <div id="loginsignup" style="float:right">
+        <div id="accountOptions">
+            <button onclick="deabute.signup()" id="signup">Signup</button>
+            <span> - or - </span>
+            <button onclick="deabute.login()" id="signup">Signup</button>
+        </div>
+        <div id='credBox' hidden>
+            <label for="username">Username </label>
+            <input type="text" id="username"></input>
+            <br>
+            <label for="password">Password </label>
+            <input type="password" id="password"></input>
+            <br>
+            <button onclick="deabute.submit()">Signup</button>
+        </div>
+    </div>
+    <h3>Deabute Chat</h3>
+    <br>
+    <div> {{ contents | safe }}</div>
+    <script type="text/javascript" src="{{ url }}/js/deabute.js"></script>
+    <script type="text/javascript" src="{{ url }}/js/chat.js"></script>
+    <script type="text/javascript" src="{{ url }}/js/lobby.js"></script>
 </body>
 </html>

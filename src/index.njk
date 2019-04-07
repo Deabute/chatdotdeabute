@@ -7,28 +7,7 @@ title: Deabute Chat
     <label for="timebox"> Next Matching Session:</label>
     <span name="timebox" id="timebox">¯\_(ツ)_/¯</span>
 </span>
-<span style="float:right">
-    <button onclick="deabute.signupSel()" id="signup">Signup</button>
-    <div id='signupBox' hidden>
-        <label for="susername">Username </label>
-        <input type="text" id="susername"></input>
-        <br>
-        <label for="spassword">Password </label>
-        <input type="password" id="spassword"></input>
-        <br>
-        <button onclick="deabute.signup()">Signup</button>
-    </div>
-    <button onclick="deabute.loginSel()" id="login" hidden>Login</button>
-    <div id='loginBox' hidden>
-        <label for="lusername">Username </label>
-        <input type="text" id="lusername"></input>
-        <br>
-        <label for="lpassword">Password </label>
-        <input type="password" id="lpassword"></input>
-        <br>
-        <button onclick="deabute.login()">Login</button>
-    </div>
-</span>
+
 <span hidden>
     <label for="pool">Pool:</label>
     <span name="pool" id="pool">?</span>
@@ -52,6 +31,3 @@ title: Deabute Chat
     <p id="serviceWindow"> {{ testing }} </p>
 </div>
 <audio id="mediaStream" autoplay> unsuported </audio>
-
-<script type="text/javascript" src="{{ url }}/js/deabute.js"></script>
-<script type="text/javascript" src="{{ url }}/js/chat.js"></script>

@@ -40,38 +40,26 @@ var wsDeabute = {
 var deabute = {
     signupButton: document.getElementById('signup'),
     loginButton: document.getElementById('login'),
-    signupBox: document.getElementById('signupBox'),
-    loginBox: document.getElementById('loginBox'),
-    susername: document.getElementById('susername'),
-    spassword: document.getElementById('spassword'),
-    lusername: document.getElementById('lusername'),
-    lpassword: document.getElementById('lpassword'),
-    loginSel: function(){
-        deabute.loginButton.hidden = true;       // hide pressed button
+    username: document.getElementById('username'),
+    password: document.getElementById('password'),
+    accountOptions: document.getElementById('accountOptions'),
+    credBox: document.getElementById('credBox'),
+    accountAction: 'signup',
+    login: function(){deabute.connecte('login');},
+    signup: function(){deabute.connect('signup');},
+    connect: function(action){
+        deabute.accountAction = action;
+        accountOptions.hidden = true;
         wsDeabute.init(function(){
-            deabute.loginBox.hidden = false; // show login box
+            deabute.credBox.hidden = false; // show sign up box
         });
     },
-    signupSel: function(){
-        deabute.signupButton.hidden = true;      // hide pressed button
-        wsDeabute.init(function(){
-            deabute.signupBox.hidden = false; // show sign up box
-        });
-    },
-    login: function(){
-        var username = deabute.lusername.value;
-        var password = deabute.lpassword.value;
+    submit: function(){
+        var username = deabute.username.value;
+        var password = deabute.password.value;
         if(username && password){
-            deabute.loginBox.hidden = true;
-            wsDeabute.send({action: 'login', username: username, password: password});
-        } else {console.log('missing shit');}
-    },
-    signup: function(){
-        var username = deabute.susername.value;
-        var password = deabute.spassword.value;
-        if(username && password){
-            deabute.signupBox.hidden = true;
-            wsDeabute.send({action: 'signup', username: username, password: password});
-        } else {console.log('missing shit');}
+            deabute.credBox.hidden = true;
+            wsDeabute.send({action: deabute.accountAction, username: username, password: password});
+        } else {console.log('missing creds');}
     }
 };
