@@ -1,8 +1,9 @@
 // deabute.js ~ copyright 2019 ~ Paul Beaduet
-
 var lobby = {
     address: document.getElementById('lobby'),
+    startButton: document.getElementById('readyButton'),
     name: '',
+    type: 'user',
     init: function(onDetermine){
         var addressArray =  window.location.href.split('/');
         if(addressArray.length === 4){
@@ -16,8 +17,33 @@ var lobby = {
     },
     status: function(req){
         if(req.isLobby){
-            lobby.address.innerHTML = lobby.name + ' is ' + req.status;
-        }
+            if(req.lobbytype){lobby.type = req.lobbytype;}
+            if(localStorage.token && localStorage.oid && localStorage.username){
+                deabute.onUser(lobby.name, localStorage.username);
+                if(lobby.name === localStorage.username){ // probably need to use a token to confirm this at one point
+                    lobby.startButton.hidden = false;
+                    lobby.address.hidden = true;
+                } else {
+                    lobby.address.innerHTML = lobby.name + ' is ' + req.status;
+                }
+            } else {
+                lobby.address.innerHTML = lobby.name + ' is ' + req.status;
+                if(req.status === 'ready'){
+                    lobby.startButton.hidden = false;
+                }
+            }
+        } else {lobby.address.innerHTML = 'Sorry, not much is here. Aside from this text';}
+    },
+    ready: function(){ // requires rtcsignals.js
+        media.init(function onGotMedia(error, stream){
+            if(stream){
+                var token = '';
+                if(lobby.name === localStorage.username){token = localStorage.token;}
+                ws.init(function onGotConnection(){ // todo add channel information into payload
+                    ws.send({action: 'connected', oid: localStorage.oid, type: lobby.type, link: lobby.name, token: token});
+                });
+            } else {console.log('no steam: ' + error);}
+        });
     }
 };
 
@@ -30,11 +56,9 @@ var wsDeabute = {
     init: function(onConnection){
         wsDeabute.instance = new WebSocket(wsDeabute.server);
         wsDeabute.instance.onopen = function(event){
-            console.log('connected to account server');
             wsDeabute.active = true;
             wsDeabute.connected = true;
             wsDeabute.instance.onmessage = wsDeabute.incoming;
-            wsDeabute.send({action: 'connected', oid: localStorage.oid, lastMatches: rtc.lastMatches});
             wsDeabute.onclose = function onSocketClose(){wsDeabute.connected = false;};
             onConnection = onConnection ? onConnection : wsDeabute.onConnection;
             onConnection();
@@ -44,6 +68,7 @@ var wsDeabute = {
         {action: 'msg', func: function(req){console.log(req.msg);}},
     ],
     incoming: function(event){           // handle incoming socket messages
+        console.log(event.data);
         var req = {action: null};          // request
         try {req = JSON.parse(event.data);}catch(error){}
         for(var h=0; h < wsDeabute.handlers.length; h++){
@@ -52,6 +77,7 @@ var wsDeabute = {
                 return;
             }
         }
+        if(req.message === 'Internal server error'){lobby.address = 'Opps something when wrong';return;}
         console.log('no handler ' + event.data);
     },
     send: function(msg){
@@ -90,21 +116,30 @@ var deabute = {
         if(deabute.username.value && deabute.password.value){
             if(regex.test(deabute.username.value)){
                 deabute.credBox.hidden = true;
-                wsDeabute.send({action: deabute.accountAction, username: deabute.username.value, password: deabute.password.value});
+                wsDeabute.send({action: deabute.accountAction, username: deabute.username.value, password: deabute.password.value, oid: localStorage.oid});
             } else {deabute.status.innerHTML = 'Username must be lowercase letters';}
         } else {deabute.status.innerHTML = 'Missing information';}
     },
     init: function(){
+        if(localStorage.token && localStorage.oid && localStorage.username){
+            deabute.status.innerHTML = '';
+        }
         wsDeabute.handlers.push({action: 'loggedin', func: deabute.onLogin});
         wsDeabute.handlers.push({action: 'signedup', func: deabute.onSignup});
         wsDeabute.handlers.push({action: 'fail', func: deabute.onFail});
     },
+    onUser: function(lobbyname, username){
+        if(username === lobbyname){deabute.status.innerHTML = 'Hey ' + username + '!, welcome to your lobby';}
+        else                      {deabute.status.innerHTML = 'Hey ' + username + '!, Welcome to ' + lobbyname + '\'s lobby';}
+        deabute.status.hidden = false;
+    },
     onLogin: function(req){
-        if(deabute.username.value === lobby.name){
-            deabute.status.innerHTML = deabute.username.value + ' welcome to your lobby';
-        } else {
-            deabute.status.innerHTML = deabute.username.value + ' Welcome to ' + lobby.name + '\'s lobby';
-        }
+        if(req.token && req.oid){
+            localStorage.oid = req.oid;
+            localStorage.username = deabute.username.value;
+            localStorage.token = req.token;
+            deabute.onUser(lobby.name, localStorage.username);
+        } else {lobby.address = 'Opps something when wrong';}
         deabute.token = req.token;
     },
     onSignup: function(req){
@@ -117,10 +152,14 @@ var deabute = {
     }
 };
 
-lobby.init(function(){
-    wsDeabute.init(function(){
-        wsDeabute.send({action: 'status', lobby: lobby.name});
-    });
-    wsDeabute.handlers.push({action: 'status', func: lobby.status});
-    deabute.init();
+persistence.init(function(localPersistence){
+    if(localPersistence){
+        lobby.init(function(){
+            wsDeabute.init(function(){ // set up connection with
+                deabute.init();
+                wsDeabute.send({action: 'status', lobby: lobby.name});
+                wsDeabute.handlers.push({action: 'status', func: lobby.status});
+            });
+        });
+    } else {console.log('no local persistence');}
 });

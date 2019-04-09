@@ -1,6 +1,24 @@
 // rtctest.js ~ copyright 2019 Paul Beaudet ~ MIT License
 // rtcSignal version - 1.0.28
 // This test requires at least two browser windows, to open a data connection between two peer
+var persistence = {
+    init: function(onStorageLoad){
+        if(localStorage){
+            if(!localStorage.oid){localStorage.oid = persistence.createOid();}
+            if(!localStorage.username){localStorage.username = 'Anonymous';}
+            onStorageLoad(true);
+        } else { onStorageLoad(false); }
+    },
+    createOid: function(){
+        var increment = Math.floor(Math.random() * (16777216)).toString(16);
+        var pid = Math.floor(Math.random() * (65536)).toString(16);
+        var machine = Math.floor(Math.random() * (16777216)).toString(16);
+        var timestamp =  Math.floor(new Date().valueOf() / 1000).toString(16);
+        return '00000000'.substr(0, 8 - timestamp.length) + timestamp + '000000'.substr(0, 6 - machine.length) + machine +
+               '0000'.substr(0, 4 - pid.length) + pid + '000000'.substr(0, 6 - increment.length) + increment;
+    },
+};
+
 var rtc = { // stun servers in config allow client to introspect a communication path to offer a remote peer
     config: {'iceServers': [ {'urls': 'stun:stun.stunprotocol.org:3478'}, {'urls': 'stun:stun.l.google.com:19302'} ]},
     lastMatches: [''],
@@ -158,16 +176,15 @@ var ws = {
     connected: false,                              // set to true when connected to server
     onConnection: function(){console.log('huh');}, // default to waiting for connections to pool dialog
     server: document.getElementById('socketserver').innerHTML,
-    init: function(){
+    init: function(onConnection){
         ws.instance = new WebSocket(ws.server);
         ws.instance.onopen = function(event){
-            console.log('connected to server');
             ws.active = true;
             ws.connected = true;
             ws.instance.onmessage = ws.incoming;
-            ws.send({action: 'connected', oid: localStorage.oid, lastMatches: rtc.lastMatches});
             ws.onclose = function onSocketClose(){ws.connected = false;};
-            ws.onConnection();
+            onConnection = onConnection ? onConnection : ws.onConnection;
+            onConnection();
         };
     },
     reduce: function(pause){
@@ -206,7 +223,7 @@ var ws = {
             }
         }
     },
-    send: function(action, msg){
+    send: function(msg){
         try{msg = JSON.stringify(msg);} catch(error){msg = {action:'error', error: error};}
         if(ws.connected){
             ws.instance.send(msg);
@@ -221,7 +238,6 @@ var media = {
     init: function(onMedia){ // get user permistion to use media
         var onMediaCallback = onMedia ? onMedia : function noSoupForYou(){};
         navigator.mediaDevices.getUserMedia({audio: true, video: false}).then(function gotMedia(mediaStream){
-            console.log('got media');
             media.stream = mediaStream;
             var audioTracks = mediaStream.getAudioTracks();
             if(audioTracks.length){
