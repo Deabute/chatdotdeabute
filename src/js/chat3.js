@@ -14,11 +14,15 @@ var rtc = { // stun servers in config allow client to introspect a communication
             rtc.candidates.push(event.candidate);
         } else {
             if(rtc.connectionGwid){
-                ws.send({action: 'ice', oid: localStorage.oid, candidates: rtc.candidates, gwid: rtc.connectionGwid});
+                rtc.signalIce();
                 rtc.candidates = []; // remove it once we send it
             } else {setTimeout(function(){rtc.onIce(event);}, 50);}
         }
     }, // Note that sdp is going to be negotiated first regardless of any media being involved. its faster to resolve, maybe?
+    recieveIce: function(req){
+        console.log('getting ice from host');
+        for(var i = 0; i < req.candidates.length; i++){rtc.peer.addIceCandidate(req.candidates[i]);}
+    },
     init: function(onSetupCB, stream){                                  // varify mediastream before calling
         rtc.peer = new RTCPeerConnection(rtc.config);           // create new instance for local client
         stream.getTracks().forEach(function(track){rtc.peer.addTrack(track, stream);});
@@ -26,13 +30,15 @@ var rtc = { // stun servers in config allow client to introspect a communication
         rtc.peer.onicecandidate = rtc.onIce;                    // Handle ice canidate at any random time they decide to come
         onSetupCB();                                            // create and offer or answer depending on what intiated
     },
+    createDataChannel: function(onCreation){
+        var datachannel = rtc.peer.createDataChannel('chat');
+        rtc.peer.ondatachannel = onCreation;           // creates data endpoints for remote peer on rtc connection
+        return datachannel;
+    },
     createOffer: function(){                                    // extend offer to client so they can send it to remote
         rtc.peer.createOffer({offerToReceiveAudio: 1, offerToReceiveVideo: 0}).then( function onOffer(desc){// get sdp data to show user & share w/ friend
             return rtc.peer.setLocalDescription(desc);                        // note what sdp data self will use
-        }).then( function onSet(){
-            ws.send({action: 'offer', oid: localStorage.oid, sdp: rtc.peer.localDescription}); // send offer to connect
-            console.log('making offer');
-        });
+        }).then(rtc.offerSignal);
     },
     giveAnswer: function(sdp, oidFromOffer, gwidOfPartner){
         rtc.peer.setRemoteDescription(sdp);
@@ -40,15 +46,12 @@ var rtc = { // stun servers in config allow client to introspect a communication
         rtc.connectionGwid = gwidOfPartner;
         rtc.peer.createAnswer().then(function onAnswer(answer){ // create answer to remote peer that offered
             return rtc.peer.setLocalDescription(answer);        // set that offer as our local discripion
-        }).then(function onOfferSetDesc(){
-            console.log('sending answer to ' + oidFromOffer);
-            ws.send({action: 'answer', oid: localStorage.oid, sdp: rtc.peer.localDescription, peerId: oidFromOffer, gwid: gwidOfPartner}); // send offer to friend
-        });                                                     // note answer is shown to user in onicecandidate event above once resolved
+        }).then(function onOfferSetDesc(){rtc.answerSignal(oidFromOffer, gwidOfPartner);});
     },
-    createDataChannel: function(onCreation){
-        var datachannel = rtc.peer.createDataChannel('chat');
-        rtc.peer.ondatachannel = onCreation;           // creates data endpoints for remote peer on rtc connection
-        return datachannel;
+    onAnswer: function(req){
+        rtc.connectionId = req.id;
+        rtc.connectionGwid = req.gwid;
+        rtc.peer.setRemoteDescription(req.sdp);
     },
     close: function(talking){
         if(rtc.peer){  // clean up pre existing rtc connection if
@@ -185,11 +188,9 @@ var ws = {
                 rtc.giveAnswer(req.sdp, req.id, req.gwid);
             }, media.stream);
         } else if(req.action === 'answer'){
-            rtc.connectionId = req.id;
-            rtc.connectionGwid = req.gwid;
-            rtc.peer.setRemoteDescription(req.sdp);
+            rtc.onAnswer(req);
         } else if(req.action === 'ice'){
-            for(var i = 0; i < req.candidates.length; i++){rtc.peer.addIceCandidate(req.candidates[i]);}
+            rtc.recieveIce(req);
         } else if(req.action === 'makeOffer'){
             if(req.pool){pool.set(req.pool);}
             rtc.init(function(){
@@ -327,7 +328,7 @@ var persistence = {
 };
 
 var DAY_OF_WEEK = 6;
-var HOUR_OF_DAY = 16;
+var HOUR_OF_DAY = 17;
 var CONSENT_MINUTE = 11;
 var OPEN_MINUTE = CONSENT_MINUTE - 10;
 var CONFLUENCE_MINUTE = CONSENT_MINUTE;
@@ -515,3 +516,13 @@ document.addEventListener('DOMContentLoaded', function(){       // wait till dom
         } else {app.discription.innerHTML = 'Incompatible browser';}
     });
 });
+
+rtc.signalIce = function(){ws.send({action: 'ice', oid: localStorage.oid, candidates: rtc.candidates, gwid: rtc.connectionGwid});};
+rtc.offerSignal = function(){
+    ws.send({action: 'offer', oid: localStorage.oid, sdp: rtc.peer.localDescription}); // send offer to connect
+    console.log('making offer');
+};
+rtc.answerSignal = function(oidFromOffer, gwidOfPartner){
+    console.log('sending answer to ' + oidFromOffer);
+    ws.send({action: 'answer', oid: localStorage.oid, sdp: rtc.peer.localDescription, peerId: oidFromOffer, gwid: gwidOfPartner});
+};
