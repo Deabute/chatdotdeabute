@@ -21,7 +21,6 @@ var persistence = {
 
 var rtc = { // stun servers in config allow client to introspect a communication path to offer a remote peer
     config: {'iceServers': [ {'urls': 'stun:stun.stunprotocol.org:3478'}, {'urls': 'stun:stun.l.google.com:19302'} ]},
-    lastMatches: [''],
     peer: null,                                                 // placeholder for parent webRTC object instance
     connectionId: '',                                           // oid of peer we are connected w/
     lastPeer: '',
@@ -50,7 +49,7 @@ var rtc = { // stun servers in config allow client to introspect a communication
         rtc.peer.createOffer({offerToReceiveAudio: 1, offerToReceiveVideo: 0}).then( function onOffer(desc){// get sdp data to show user & share w/ friend
             return rtc.peer.setLocalDescription(desc);                        // note what sdp data self will use
         }).then( function onSet(){
-            ws.send({action: 'offer', oid: localStorage.oid, sdp: rtc.peer.localDescription, lastMatches: rtc.lastMatches}); // send offer to connect
+            ws.send({action: 'offer', oid: localStorage.oid, sdp: rtc.peer.localDescription, type: lobby.type, link: lobby.name}); // send offer to connect
             console.log('making offer');
         });
     },
@@ -69,10 +68,6 @@ var rtc = { // stun servers in config allow client to introspect a communication
         if(rtc.peer){  // clean up pre existing rtc connection if
             rtc.peer.close();
             rtc.peer = null;
-        }
-        if(talking){
-            if(rtc.lastMatches.unshift(rtc.connectionId) > 3){rtc.lastMatches.pop();}
-            localStorage.lastMatches = JSON.stringify(rtc.lastMatches);
         }
         rtc.lastPeer = rtc.connectionId;
         rtc.connectionId = '';
@@ -105,9 +100,9 @@ var dataPeer = {
         };
     },
     incoming: function(event){                              // handle incoming rtc messages
-        var req = {action: null};                             // request defualt
+        var req = {action: null};                           // request defualt
         try {req = JSON.parse(event.data);}catch(error){}   // probably should be wrapped in error handler
-        if(req.action === 'disconnect'){                      // recieved when peer ends
+        if(req.action === 'disconnect'){                    // recieved when peer ends
             dataPeer.app.disconnect();
         } else if(req.action === 'terminate'){
             dataPeer.close();
@@ -115,7 +110,11 @@ var dataPeer = {
             dataPeer.whenReady();
         } else if(req.action === 'connect'){
             dataPeer.peerName = req.username; console.log('connected to ' + req.username);
-            if(dataPeer.clientReady){dataPeer.readySignal();}
+            dataPeer.app.onPeer(req.username);
+            if(dataPeer.clientReady){
+                console.log('sending ready signal');
+                dataPeer.readySignal();
+            }
         }
     },
     disconnect: function(human){
@@ -134,6 +133,7 @@ var dataPeer = {
     readySignal: function(){
         dataPeer.clientReady = true;
         if(dataPeer.peerName){
+            console.log('sending ready signal');
             dataPeer.send({action:'ready', username: localStorage.username});
             dataPeer.whenReady();
         } else { dataPeer.setReconsentTime(false);}
@@ -182,7 +182,10 @@ var ws = {
             ws.active = true;
             ws.connected = true;
             ws.instance.onmessage = ws.incoming;
-            ws.onclose = function onSocketClose(){ws.connected = false;};
+            ws.onclose = function onSocketClose(stuff){
+                console.log('disconnected from host: ' + stuff);
+                ws.connected = false;
+            };
             onConnection = onConnection ? onConnection : ws.onConnection;
             onConnection();
         };
@@ -192,7 +195,7 @@ var ws = {
         ws.active = false;
     },
     repool: function(){
-        if(!ws.active){ws.send({action: 'repool', oid: localStorage.oid, lastMatches: rtc.lastMatches});} // let server know we can be rematched
+        if(!ws.active){ws.send({action: 'repool', oid: localStorage.oid});} // let server know we can be rematched
         ws.active = true;
     },
     handlers: [],
@@ -209,11 +212,15 @@ var ws = {
         } else if(req.action === 'ice'){
             for(var i = 0; i < req.candidates.length; i++){rtc.peer.addIceCandidate(req.candidates[i]);}
         } else if(req.action === 'makeOffer'){
+            console.log('Asked to make offer, set pool ' + req.pool);
             rtc.init(rtc.createOffer);
         } else if(req.action === 'setPool'){
-            console.log(req.pool);
+            console.log('set pool ' + req.pool);
         } else if(req.action === 'pool'){
-            console.log(req.count);
+            console.log('increment pool ' + req.count);
+        } else if(req.action === 'disconnect'){
+            console.log('disconnected from host');
+            ws.connected = false;
         } else {
             for(var h=0; h < ws.handlers.length; h++){
                 if(req.action === ws.handlers[h].action){
@@ -223,12 +230,20 @@ var ws = {
             }
         }
     },
+    serror: "{\"action\":\"error\",\"error\":\"failed stringify\"}",
     send: function(msg){
-        try{msg = JSON.stringify(msg);} catch(error){msg = {action:'error', error: error};}
         if(ws.connected){
+            try{msg = JSON.stringify(msg);} catch(error){msg = ws.serror;}
             ws.instance.send(msg);
-            return true;
-        } else { return false; }
+        } else { // otherwise try to reconnect
+            ws.init(function onReconnect(){
+                msg.originAction = msg.action;
+                msg.action = 'reconnect';
+                msg.oid = localStorage.oid;
+                try{msg = JSON.stringify(msg);}catch(e){msg = ws.serror;}
+                ws.instance.send(msg);
+            });
+        }
     }
 };
 

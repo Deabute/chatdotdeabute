@@ -1,92 +1,8 @@
-// TODO Make compatible with rtcsignals
-
-var prompt = {
-    caller: false,
-    feild: document.getElementById('promptFeild'),
-    form: document.getElementById('promptForm'),
-    nps: {
-        id: 'usernps',
-        question: 'How did it go? If you knew them better, or you do know them, would you introduce them to another friend?',
-        answers: ['definitely not', 'no', 'meh', 'yes', 'definitely']
-    },
-    answers: document.getElementById('formAnswers'),
-    create: function(questionObj, onAnswer){
-        prompt.form.hidden = false;
-        prompt.feild.innerHTML = questionObj.question;
-        var answerBundle = document.createElement('div'); answerBundle.id = 'answerBundle';
-        prompt.answers.appendChild(answerBundle);
-        var halfway = Math.floor(questionObj.answers.length/2); // figure middle answer index
-        for(var i = 0; i < questionObj.answers.length; i++){
-            var radioLabel = document.createElement('label');
-            var radioOption = document.createElement('input');
-            if(i === halfway){radioOption.checked = true;}      // set default selection
-            radioLabel.for = 'answer' + i; radioLabel.innerHTML = questionObj.answers[i];
-            radioOption.id = 'answer' + i; radioOption.type = 'radio'; radioOption.name = 'answer'; radioOption.value = i;
-            answerBundle.appendChild(radioOption); answerBundle.appendChild(radioLabel); // append option and label
-            answerBundle.appendChild(document.createElement('br'));
-        }
-        prompt.form.addEventListener('submit', function submitAnswer(event){
-            event.preventDefault();
-            var radios = document.getElementsByName('answer');
-            var unifiedIndex = 4 - halfway; // determines relitive start value from universal middle value
-            for(var entry = 0; entry < radios.length; entry++){                   // for all posible current question answers
-                if(radios[entry].checked){                                        // find checked entry
-                    for(var peer = 0; peer < persistence.answers.length; peer++){ // for existing user answer entries
-                        if(persistence.answers[peer].oid === rtc.lastPeer){       // if an existing entry matches this peer
-                            persistence.answers[peer].nps = unifiedIndex;         // add property to entry
-                            prompt.onSubmit(onAnswer); return;                    // save and end function
-                        }
-                    }
-                    persistence.answers.push({oid: rtc.lastPeer, nps: unifiedIndex}); // if peer not found push as new entry
-                    prompt.onSubmit(onAnswer); return;                                // save and end function
-                }
-                unifiedIndex++; // count up from relitive start value. relitive to universal middle value (4)
-            }
-        }, false);
-    },
-    onSubmit: function(whenDone){
-        localStorage.answers = JSON.stringify(persistence.answers); // save any recorded answer
-        prompt.caller = false;
-        prompt.answers.innerHTML = '';
-        prompt.form.hidden = true;
-        prompt.feild.innerHTML = '';
-        whenDone();
-    }
-};
-
-var persistence = {
-    answers: [],
-    init: function(onStorageLoad){
-        if(localStorage){
-            if(!localStorage.oid){localStorage.oid = persistence.createOid();}
-            if(!localStorage.username){localStorage.username = 'Anonymous';}
-            if(localStorage.answers){persistence.answers = JSON.parse(localStorage.answers);}
-            else                    {localStorage.answers = JSON.stringify(persistence.answers);}
-            if(localStorage.lastMatches){
-                if(serviceTime.WINDOW === 't'){localStorage.lastMatches = '[""]';}
-                else {rtc.lastMatches = JSON.parse(localStorage.lastMatches);}
-            } else {
-                if(serviceTime.WINDOW === 't'){localStorage.lastMatches = '[""]';}
-                else {localStorage.lastMatches = JSON.stringify(rtc.lastMatches);}
-            }
-            onStorageLoad(true);
-        } else { onStorageLoad(false); }
-    },
-    saveAnswer: function(){
-        localStorage.answers = JSON.stringify(persistence.answers);
-    },
-    createOid: function(){
-        var increment = Math.floor(Math.random() * (16777216)).toString(16);
-        var pid = Math.floor(Math.random() * (65536)).toString(16);
-        var machine = Math.floor(Math.random() * (16777216)).toString(16);
-        var timestamp =  Math.floor(new Date().valueOf() / 1000).toString(16);
-        return '00000000'.substr(0, 8 - timestamp.length) + timestamp + '000000'.substr(0, 6 - machine.length) + machine +
-               '0000'.substr(0, 4 - pid.length) + pid + '000000'.substr(0, 6 - increment.length) + increment;
-    },
-};
-
-var DAY_OF_WEEK = 4;
-var HOUR_OF_DAY = 13;
+// rtctest.js ~ copyright 2019 Paul Beaudet ~ MIT License
+// rtcSignal version - 1.0.28
+// This test requires at least two browser windows, to open a data connection between two peer
+var DAY_OF_WEEK = 6;
+var HOUR_OF_DAY = 14;
 var CONSENT_MINUTE = 11;
 var OPEN_MINUTE = CONSENT_MINUTE - 10;
 var CONFLUENCE_MINUTE = CONSENT_MINUTE;
@@ -147,7 +63,7 @@ var serviceTime = {
         serviceTime.begin.setHours(HOUR_OF_DAY, 0);             // set back to true begin time, always on hour
         serviceTime.test();
         app.proposition(); // ask about name and microphone to start getting set up
-        ws.onConnection = serviceTime.onWSConnect;
+        // ws.onConnection = serviceTime.onWSConnect;
     },
     onWSConnect: function(){
         serviceTime.testOnConnect();
@@ -188,26 +104,12 @@ var serviceTime = {
     }
 };
 
-var app = {
+var app = { //requires media, ws, dataPeer, serviceTime,
     setupInput: document.getElementById('setupInput'),
     setupButton: document.getElementById('setupButton'),
     connectButton: document.getElementById('connectButton'),
     discription: document.getElementById('discription'),
     timeouts: 0,
-    init: function(){
-        document.addEventListener('DOMContentLoaded', function(){       // wait till dom is loaded before manipulating it
-            persistence.init(function onLocalRead(capible){
-                if(capible){
-                    window.addEventListener("beforeunload", function(event){
-                        event.returnValue = '';
-                        if(ws.connected){dataPeer.close();ws.reduce(false);}
-                        app.clearTimeouts();
-                    });
-                    serviceTime.outside();
-                } else {app.discription.innerHTML = 'Incompatible browser';}
-            });
-        });
-    },
     clearTimeouts: function(){
         if(app.timeouts > 0){while(app.timeouts--){clearTimeout(app.timeouts + 1);}}
         serviceTime.sessionInd.hidden = true;
@@ -237,9 +139,13 @@ var app = {
         localStorage.username = app.setupInput.value;
         app.setupInput.hidden = true;
         media.init(function onMic(issue, mediaStream){
-            if(issue)            {app.issue(issue);}
-            else if (mediaStream){ws.init();}
-            else                 {app.issue('No media stream present');}
+            if(issue){app.issue(issue);}
+            else if (mediaStream){
+                ws.init(function(){
+                    ws.send({action: 'connected', oid: localStorage.oid, lastMatches: rtc.lastMatches});
+                    serviceTime.onWSConnect();
+                });
+            } else {app.issue('No media stream present');}
         });
     },
     disconnect: function(human){
@@ -276,4 +182,68 @@ var app = {
     }
 };
 
-app.init(); // begin application
+// set up app
+document.addEventListener('DOMContentLoaded', function(){       // wait till dom is loaded before manipulating it
+    persistence.init(function onLocalRead(capible){
+        if(capible){
+            window.addEventListener("beforeunload", function(event){
+                event.returnValue = '';
+                if(ws.instance){dataPeer.close();ws.reduce(false);}
+                app.clearTimeouts();
+            });
+            serviceTime.outside();
+        } else {app.discription.innerHTML = 'Incompatible browser';}
+    });
+});
+// instantiate interdependent functions
+ws.on('offer', function(req){
+    rtc.init(function(dataChannel){
+        dataPeer.channel = rtc.createDataChannel(dataPeer.newChannel);
+        rtc.giveAnswer(req.sdp, req.id, req.gwid);
+    }, media.stream);
+});
+ws.on('answer', rtc.onAnswer);
+ws.on('ice', rtc.onIce);
+ws.on('makeOffer', function(req){
+    if(req.pool){pool.onSet(req);}
+    rtc.init(function(dataChannel){
+        dataPeer.channel = rtc.createDataChannel(dataPeer.newChannel);
+        rtc.createOffer();
+    }, media.stream);
+    prompt.caller = true; // defines who instigator is, to split labor
+});
+ws.on('setPool', pool.onSet);
+ws.on('pool', pool.onIncrement);
+rtc.signalIce = function(){ws.send({action: 'ice', oid: localStorage.oid, candidates: rtc.candidates, gwid: rtc.connectionGwid});};
+dataPeer.on('disconnect', app.disconnect);
+rtc.offerSignal = function(){
+    ws.send({action: 'offer', oid: localStorage.oid, sdp: rtc.peer.localDescription, lastMatches: rtc.lastMatches}); // send offer to connect
+    console.log('making offer');
+};
+rtc.answerSignal = function(oidFromOffer, gwidOfPartner){
+    console.log('sending answer to ' + oidFromOffer);
+    ws.send({action: 'answer', oid: localStorage.oid, sdp: rtc.peer.localDescription, peerId: oidFromOffer, gwid: gwidOfPartner});
+};
+dataPeer.onClose = function(talking){rtc.close(talking);};
+dataPeer.inactiveOnConfluence = function(){
+    ws.reduce(true);
+    app.connectButton.onclick = function(){
+        dataPeer.clientReady = true;
+        dataPeer.setReconsentInactive();
+    };
+};
+dataPeer.onDisconnect = function(){ws.send({action: 'pause', oid: localStorage.oid});};
+dataPeer.onReady = function(){
+    console.log('about to turn on microphone');
+    media.switchAudio(true); // switch audio on
+    ws.reduce(false);        // reduce from connection pool
+    app.whenConnected();     // change app to look like connected
+};
+dataPeer.setReconsentInactive = function(){
+    ws.repool();
+    app.timeouts = setTimeout(app.consent, TIME_FOR_CONSENT * 1000);
+};
+dataPeer.setReconsentActive = function(){
+    if(pool.count > 1){ws.send({action: 'unmatched', oid: localStorage.oid});} // let server know we can be rematched
+    app.timeouts = setTimeout(app.consent, TIME_FOR_CONSENT * 1000);
+};
