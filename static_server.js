@@ -4,10 +4,17 @@ var path = require('path');
 
 module.exports = function serve(){
     app.use(express.static('build'));
-    app.use(function(req, res){
+    var router = express.Router();
+    router.get('/', function(req, res){
         res.status(200);
-        res.sendFile(path.join(__dirname + '/build/redirect.html'));
+        res.sendFile(path.join(__dirname + '/build/chat.html'));
     });
+    router.get('/:erm', function(req, res){
+        res.status(200);
+        res.sendFile(path.join(__dirname + '/build/chat.html'));
+    });
+    app.use(router);
+
     app.listen(process.env.PORT);
 };
 
