@@ -23,9 +23,7 @@ var rtc = { // stun servers in config allow client to introspect a communication
         rtc.peer = new RTCPeerConnection(rtc.config);           // create new instance for local client
         stream.getTracks().forEach(function(track){rtc.peer.addTrack(track, stream);});
         rtc.peer.ontrack = function(event){document.getElementById('mediaStream').srcObject = event.streams[0];}; // behavior upon reciving track
-        dataPeer.channel = rtc.peer.createDataChannel('chat');  // Creates data endpoint for client's side of connection
         rtc.peer.onicecandidate = rtc.onIce;                    // Handle ice canidate at any random time they decide to come
-        rtc.peer.ondatachannel = dataPeer.newChannel;           // creates data endpoints for remote peer on rtc connection
         onSetupCB();                                            // create and offer or answer depending on what intiated
     },
     createOffer: function(){                                    // extend offer to client so they can send it to remote
@@ -46,6 +44,11 @@ var rtc = { // stun servers in config allow client to introspect a communication
             console.log('sending answer to ' + oidFromOffer);
             ws.send({action: 'answer', oid: localStorage.oid, sdp: rtc.peer.localDescription, peerId: oidFromOffer, gwid: gwidOfPartner}); // send offer to friend
         });                                                     // note answer is shown to user in onicecandidate event above once resolved
+    },
+    createDataChannel: function(onCreation){
+        var datachannel = rtc.peer.createDataChannel('chat');
+        rtc.peer.ondatachannel = onCreation;           // creates data endpoints for remote peer on rtc connection
+        return datachannel;
     },
     close: function(talking){
         if(rtc.peer){  // clean up pre existing rtc connection if
@@ -177,7 +180,10 @@ var ws = {
         try {req = JSON.parse(event.data);} // probably should be wrapped in error handler
         catch(error){}                   // if error we don't care there is a default object
         if(req.action === 'offer'){
-            rtc.init(function onInit(){rtc.giveAnswer(req.sdp, req.id, req.gwid);}, media.stream);
+            rtc.init(function onInit(){
+                dataPeer.channel = rtc.createDataChannel(dataPeer.newChannel);
+                rtc.giveAnswer(req.sdp, req.id, req.gwid);
+            }, media.stream);
         } else if(req.action === 'answer'){
             rtc.connectionId = req.id;
             rtc.connectionGwid = req.gwid;
@@ -186,7 +192,10 @@ var ws = {
             for(var i = 0; i < req.candidates.length; i++){rtc.peer.addIceCandidate(req.candidates[i]);}
         } else if(req.action === 'makeOffer'){
             if(req.pool){pool.set(req.pool);}
-            rtc.init(rtc.createOffer, media.stream);
+            rtc.init(function(){
+                dataPeer.channel = rtc.createDataChannel(dataPeer.newChannel);
+                rtc.createOffer();
+            }, media.stream);
             prompt.caller = true; // defines who instigator is, to split labor
         } else if(req.action === 'setPool'){
             pool.set(req.pool);
