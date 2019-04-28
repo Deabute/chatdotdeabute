@@ -2,7 +2,7 @@
 // rtcSignal version - 1.0.28
 // This test requires at least two browser windows, to open a data connection between two peer
 var DAY_OF_WEEK = 0;
-var HOUR_OF_DAY = 12;
+var HOUR_OF_DAY = 15;
 var CONSENT_MINUTE = 11;
 var OPEN_MINUTE = CONSENT_MINUTE - 10;
 var CONFLUENCE_MINUTE = CONSENT_MINUTE;
@@ -181,7 +181,7 @@ var app = {
     }
 };
 
-document.addEventListener('DOMContentLoaded', function(){       // wait till dom is loaded before manipulating it
+// document.addEventListener('DOMContentLoaded', function(){       // wait till dom is loaded before manipulating it
     persistence.init(function onLocalRead(capible){
         if(capible){
             window.addEventListener("beforeunload", function(event){
@@ -189,10 +189,20 @@ document.addEventListener('DOMContentLoaded', function(){       // wait till dom
                 if(ws.instance){dataPeer.close();ws.reduce(false);}
                 app.clearTimeouts();
             });
-            serviceTime.outside();
+            lobby.init(function(inLobby){
+                wsDeabute.init(function(){
+                    deabute.init();
+                    if(inLobby){
+                        wsDeabute.send({action: 'status', lobby: lobby.name});
+                        wsDeabute.on('satuts', lobby.status);
+                    } else {
+                        serviceTime.outside();
+                    }
+                });
+            });
         } else {app.discription.innerHTML = 'Incompatible browser';}
     });
-});
+// });
 
 rtc.signalIce = function(){ws.send({action: 'ice', oid: localStorage.oid, candidates: rtc.candidates, gwid: rtc.connectionGwid});};
 rtc.offerSignal = function(){

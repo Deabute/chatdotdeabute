@@ -7,7 +7,7 @@
     <link rel="shortcut icon" type="image/x-icon" href="/img/favicon.ico">
 </head>
 <body>
-    {# <div id="loginsignup" style="float:right">
+    <div id="loginsignup" style="float:right">
         <p id='accountStatus' hidden>Enter username and password<p>
         <div id="accountOptions">
             <button onclick="deabute.signup()" id="signup">Signup</button>
@@ -23,7 +23,7 @@
             <br>
             <button onclick="deabute.submit()">Submit</button>
         </div>
-    </div> #}
+    </div>
     <h3>Deabute Chat</h3>
     <br>
     <div> {{ contents | safe }}</div>
@@ -32,6 +32,7 @@
         <p id="accountserver"> {{ accountserver }} </p>
         <p id="serviceWindow"> {{ testing }} </p>
     </div>
+    <script type="text/javascript" src="{{ url }}/js/deabute.js"></script>
     <script type="text/javascript" src="{{ url }}/js/dependencies.js"></script>
     <script type="text/javascript" src="{{ url }}/js/chat3.js"></script>
 </body>
