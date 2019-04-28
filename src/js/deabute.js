@@ -32,9 +32,7 @@ var lobby = {
                 } else {lobby.info.innerHTML = lobby.name + ' is ' + req.status;}
             } else {
                 lobby.info.innerHTML = lobby.name + ' is ' + req.status;
-                if(req.status === 'ready'){
-                    lobby.startButton.hidden = false;
-                }
+                if(req.status === 'ready'){lobby.startButton.hidden = false;}
             }
         } else {lobby.info.innerHTML = 'Sorry, not much is here. Aside from this text';}
     },
@@ -190,17 +188,3 @@ var deabute = {
     },
     onFail: function(req){deabute.status.innerHTML = req.msg;}
 };
-
-// persistence.init(function(localPersistence){
-//     if(localPersistence){
-//         lobby.init(function(inLobby){
-//             wsDeabute.init(function(){ // set up connection with
-//                 deabute.init();
-//                 if(inLobby){
-//                     wsDeabute.send({action: 'status', lobby: lobby.name});
-//                     wsDeabute.handlers.push({action: 'status', func: lobby.status});
-//                 }
-//             });
-//         });
-//     } else {console.log('no local persistence');}
-// });
