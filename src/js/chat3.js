@@ -19,8 +19,7 @@ var rtc = { // stun servers in config allow client to introspect a communication
             } else {setTimeout(function(){rtc.onIce(event);}, 50);}
         }
     }, // Note that sdp is going to be negotiated first regardless of any media being involved. its faster to resolve, maybe?
-    recieveIce: function(req){
-        console.log('getting ice from host');
+    recieveIce: function(req){ console.log('getting ice from host');
         for(var i = 0; i < req.candidates.length; i++){rtc.peer.addIceCandidate(req.candidates[i]);}
     },
     init: function(onSetupCB, stream){                                  // varify mediastream before calling
@@ -66,89 +65,76 @@ var rtc = { // stun servers in config allow client to introspect a communication
 
 var dataPeer = {
     channel: null,
-    connected: false,   // WE, two computer peers are connected
     ready: false,       // other human is ready
     clientReady: false, // I, human am ready
     talking: false,     // WE, humans are talking
     peerName: '',
     close: function(){
+        console.log('closing peer connection');
         rtc.close(dataPeer.talking);
         dataPeer.talking = false;
-        dataPeer.connected = false;
         dataPeer.ready = false;
         dataPeer.peerName = '';
     },
     newChannel: function(event){
         receiveChannel = event.channel;                      // recieve channel events handlers created on connection
+        dataPeer.on('terminate', dataPeer.close);
+        dataPeer.on('ready', dataPeer.whenReady);
+        dataPeer.on('connect', function(req){
+            dataPeer.peerName = req.username; console.log('connected to ' + req.username);
+            if(dataPeer.clientReady){dataPeer.readySignal();} // client may already be ready if reconnecting
+        });
         receiveChannel.onmessage = dataPeer.incoming;        // handle events upon opening connection
         receiveChannel.onopen = function onOpen(){
-            dataPeer.connected = true;
+            console.log('peer connection opening');
             dataPeer.send({action: 'connect', username: localStorage.username});
         };
     },
+    handlers: [{action: 'msg', func: function(req){console.log(req.msg);}},],
+    on: function(action, func){dataPeer.handlers.push({action: action, func: func});},
     incoming: function(event){                              // handle incoming rtc messages
         var req = {action: null};                             // request defualt
         try {req = JSON.parse(event.data);}catch(error){}   // probably should be wrapped in error handler
-        if(req.action === 'disconnect'){                      // recieved when peer ends
-            app.disconnect();
-        } else if(req.action === 'terminate'){
-            dataPeer.close();
-        } else if(req.action === 'ready'){
-            dataPeer.whenReady();
-        } else if(req.action === 'connect'){
-            dataPeer.peerName = req.username; console.log('connected to ' + req.username);
-            if(dataPeer.clientReady){dataPeer.readySignal();}
+        for(var h=0; h < dataPeer.handlers.length; h++){
+            if(req.action === dataPeer.handlers[h].action){
+                dataPeer.handlers[h].func(req);
+                return;
+            }
+        }
+    },
+    send: function(sendObj){
+        if(dataPeer.channel){
+            try{sendObj = JSON.stringify(sendObj);} catch(error){console.log(error);return;}
+            dataPeer.channel.send(sendObj);
         }
     },
     disconnect: function(human){
         if(human){dataPeer.send({action: 'disconnect'});} // tell friend we are done
         dataPeer.clientReady = false;        // no longer ready
-        ws.send({action: 'pause', oid: localStorage.oid});
+        dataPeer.onDisconnect();
         dataPeer.close();
-    },
-    send: function(sendObj){
-        try{sendObj = JSON.stringify(sendObj);} catch(error){sendObj = {action: 'error', error: error};}
-        if(dataPeer.connected){
-            dataPeer.channel.send(sendObj);
-            return true;
-        } else { return false;}
     },
     readySignal: function(){
         dataPeer.clientReady = true;
         if(dataPeer.peerName){
             dataPeer.send({action:'ready', username: localStorage.username});
             dataPeer.whenReady();
-        } else { dataPeer.setReconsentTime(false);}
-    },
-    setReconsentTime: function(inactive){
-        if(inactive){ws.repool();}
-        else if(pool.count > 1){ws.send({action: 'unmatched', oid: localStorage.oid});} // let server know we can be rematched
-        app.timeouts = setTimeout(app.consent, TIME_FOR_CONSENT * 1000);
+        } else { dataPeer.setReconsentActive();}
     },
     whenReady: function(){
         if(dataPeer.ready){
             dataPeer.talking = true;
             dataPeer.ready = false;           // "we" are ready
-            media.switchAudio(true);
-            ws.reduce(false);
-            app.whenConnected();
+            dataPeer.onReady();
         } else {dataPeer.ready = true;}
     },
     onConfluence: function(){       // happens at confluence time
         if(!dataPeer.talking){      // given conversation is a dud
-            if(dataPeer.peerName){dataPeer.send({action: 'terminate'});}
-            if(dataPeer.clientReady){
-                dataPeer.setReconsentTime(false);
-            } else {
-                ws.reduce(true);
-                app.connectButton.onclick = dataPeer.payingAttentionAgain;
-            } // this client is eating pie or doing something other than paying attention
-            dataPeer.close();
+            if(dataPeer.peerName){dataPeer.send({action: 'terminate'});} // this needs more explaination
+            if(dataPeer.clientReady){dataPeer.setReconsentActive();}   // active client doesn't know, but may need to be gauged for attention if takes too long
+            else                    {dataPeer.inactiveOnConfluence();} // this client is eating pie or doing something other than paying attention
+            dataPeer.close();                                          // connection closes in this case so canidates can move on
         }
-    },
-    payingAttentionAgain: function(){
-        dataPeer.clientReady = true;
-        dataPeer.setReconsentTime(true);
     }
 };
 
@@ -327,8 +313,8 @@ var persistence = {
     },
 };
 
-var DAY_OF_WEEK = 6;
-var HOUR_OF_DAY = 17;
+var DAY_OF_WEEK = 0;
+var HOUR_OF_DAY = 11;
 var CONSENT_MINUTE = 11;
 var OPEN_MINUTE = CONSENT_MINUTE - 10;
 var CONFLUENCE_MINUTE = CONSENT_MINUTE;
@@ -525,4 +511,29 @@ rtc.offerSignal = function(){
 rtc.answerSignal = function(oidFromOffer, gwidOfPartner){
     console.log('sending answer to ' + oidFromOffer);
     ws.send({action: 'answer', oid: localStorage.oid, sdp: rtc.peer.localDescription, peerId: oidFromOffer, gwid: gwidOfPartner});
+};
+
+dataPeer.on('disconnect', app.disconnect);
+dataPeer.onClose = function(talking){rtc.close(talking);};
+dataPeer.inactiveOnConfluence = function(){
+    ws.reduce(true);
+    app.connectButton.onclick = function(){
+        dataPeer.clientReady = true;
+        dataPeer.setReconsentInactive();
+    };
+};
+dataPeer.onDisconnect = function(){ws.send({action: 'pause', oid: localStorage.oid});};
+dataPeer.onReady = function(){
+    console.log('about to turn on microphone');
+    media.switchAudio(true); // switch audio on
+    ws.reduce(false);        // reduce from connection pool
+    app.whenConnected();     // change app to look like connected
+};
+dataPeer.setReconsentInactive = function(){
+    ws.repool();
+    app.timeouts = setTimeout(app.consent, TIME_FOR_CONSENT * 1000);
+};
+dataPeer.setReconsentActive = function(){
+    if(pool.count > 1){ws.send({action: 'unmatched', oid: localStorage.oid});} // let server know we can be rematched
+    app.timeouts = setTimeout(app.consent, TIME_FOR_CONSENT * 1000);
 };
