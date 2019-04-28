@@ -70,7 +70,6 @@ var dataPeer = {
     talking: false,     // WE, humans are talking
     peerName: '',
     close: function(){
-        console.log('closing peer connection');
         rtc.close(dataPeer.talking);
         dataPeer.talking = false;
         dataPeer.ready = false;
@@ -85,10 +84,7 @@ var dataPeer = {
             if(dataPeer.clientReady){dataPeer.readySignal();} // client may already be ready if reconnecting
         });
         receiveChannel.onmessage = dataPeer.incoming;        // handle events upon opening connection
-        receiveChannel.onopen = function onOpen(){
-            console.log('peer connection opening');
-            dataPeer.send({action: 'connect', username: localStorage.username});
-        };
+        receiveChannel.onopen = function onOpen(){dataPeer.send({action: 'connect', username: localStorage.username});};
     },
     handlers: [{action: 'msg', func: function(req){console.log(req.msg);}},],
     on: function(action, func){dataPeer.handlers.push({action: action, func: func});},
@@ -141,19 +137,14 @@ var dataPeer = {
 var ws = {
     active: false,
     instance: null,                                // placeholder for websocket object
-    connected: false,                              // set to true when connected to server
-    onConnection: function(){console.log('huh');}, // default to waiting for connections to pool dialog
     server: document.getElementById('socketserver').innerHTML,
-    init: function(){
+    init: function(onConnection){
         ws.instance = new WebSocket(ws.server);
         ws.instance.onopen = function(event){
-            console.log('connected to server');
             ws.active = true;
-            ws.connected = true;
             ws.instance.onmessage = ws.incoming;
-            ws.send({action: 'connected', oid: localStorage.oid});
-            ws.onclose = function onSocketClose(){ws.connected = false;};
-            ws.onConnection();
+            ws.onclose = function onSocketClose(){ws.instance = null;};
+            if(onConnection){onConnection();}
         };
     },
     reduce: function(pause){
@@ -164,50 +155,35 @@ var ws = {
         if(!ws.active){ws.send({action: 'repool', oid: localStorage.oid});} // let server know we can be rematched
         ws.active = true;
     },
-    incoming: function(event){           // handle incoming socket messages
-        var req = {action: null};          // request
-        try {req = JSON.parse(event.data);} // probably should be wrapped in error handler
-        catch(error){}                   // if error we don't care there is a default object
-        if(req.action === 'offer'){
-            rtc.init(function onInit(){
-                dataPeer.channel = rtc.createDataChannel(dataPeer.newChannel);
-                rtc.giveAnswer(req.sdp, req.id, req.gwid);
-            }, media.stream);
-        } else if(req.action === 'answer'){
-            rtc.onAnswer(req);
-        } else if(req.action === 'ice'){
-            rtc.recieveIce(req);
-        } else if(req.action === 'makeOffer'){
-            if(req.pool){pool.set(req.pool);}
-            rtc.init(function(){
-                dataPeer.channel = rtc.createDataChannel(dataPeer.newChannel);
-                rtc.createOffer();
-            }, media.stream);
-            prompt.caller = true; // defines who instigator is, to split labor
-        } else if(req.action === 'setPool'){
-            pool.set(req.pool);
-        } else if(req.action === 'pool'){
-            pool.increment(req.count);
+    handlers: [{action: 'msg', func: function(req){console.log(req.msg);}},],
+    on: function(action, func){ws.handlers.push({action: action, func: func});},
+    incoming: function(event){                            // handle incoming socket messages
+        var req = {action: null};                           // request
+        try {req = JSON.parse(event.data);}catch(error){} // if error we don't care there is a default object
+        for(var h=0; h < ws.handlers.length; h++){
+            if(req.action === ws.handlers[h].action){
+                ws.handlers[h].func(req);
+                return;
+            }
         }
+        if(req.message === 'Internal server error'){console.log('Opps something when wrong: ' + JSON.stringify(req));return;}
+        console.log('no handler ' + event.data);
     },
     send: function(msg){
-        try{msg = JSON.stringify(msg);} catch(error){msg = {action:'error', error: error};}
-        if(ws.connected){
-            ws.instance.send(msg);
-            return true;
-        } else { return false; }
+        try{msg = JSON.stringify(msg);} catch(error){msg = "{\"action\":\"error\",\"error\":\"failed stringify\"}";}
+        if(ws.instance){ws.instance.send(msg);}
     }
 };
 
 var pool = {
     display: document.getElementById('pool'),
     count: 0, // assume peer is counted in pool
-    increment: function(amount){
-        pool.count = pool.count + amount;
+    onIncrement: function(req){
+        pool.count = pool.count + req.count;
         pool.display.innerHTML = pool.count;
     },
-    set: function(setAmount){
-        pool.count = setAmount;
+    onSet: function(req){
+        pool.count = req.pool;
         pool.display.innerHTML = pool.count;
     }
 };
@@ -314,7 +290,7 @@ var persistence = {
 };
 
 var DAY_OF_WEEK = 0;
-var HOUR_OF_DAY = 11;
+var HOUR_OF_DAY = 12;
 var CONSENT_MINUTE = 11;
 var OPEN_MINUTE = CONSENT_MINUTE - 10;
 var CONFLUENCE_MINUTE = CONSENT_MINUTE;
@@ -451,9 +427,13 @@ var app = {
         localStorage.username = app.setupInput.value;
         app.setupInput.hidden = true;
         media.init(function onMic(issue, mediaStream){
-            if(issue)            {app.issue(issue);}
-            else if (mediaStream){ws.init();}
-            else                 {app.issue('No media stream present');}
+            if(issue){app.issue(issue);}
+            else if(mediaStream){
+                ws.init(function(){
+                    ws.send({action: 'connected', oid: localStorage.oid});
+                    serviceTime.onWSConnect();
+                });
+            } else {app.issue('No media stream present');}
         });
     },
     disconnect: function(human){
@@ -495,7 +475,7 @@ document.addEventListener('DOMContentLoaded', function(){       // wait till dom
         if(capible){
             window.addEventListener("beforeunload", function(event){
                 event.returnValue = '';
-                if(ws.connected){dataPeer.close();ws.reduce(false);}
+                if(ws.instance){dataPeer.close();ws.reduce(false);}
                 app.clearTimeouts();
             });
             serviceTime.outside();
@@ -537,3 +517,21 @@ dataPeer.setReconsentActive = function(){
     if(pool.count > 1){ws.send({action: 'unmatched', oid: localStorage.oid});} // let server know we can be rematched
     app.timeouts = setTimeout(app.consent, TIME_FOR_CONSENT * 1000);
 };
+ws.on('offer', function(req){
+    rtc.init(function(dataChannel){
+        dataPeer.channel = rtc.createDataChannel(dataPeer.newChannel);
+        rtc.giveAnswer(req.sdp, req.id, req.gwid);
+    }, media.stream);
+});
+ws.on('answer', rtc.onAnswer);
+ws.on('ice', rtc.recieveIce);
+ws.on('makeOffer', function(req){
+    if(req.pool){pool.onSet(req);}
+    rtc.init(function(dataChannel){
+        dataPeer.channel = rtc.createDataChannel(dataPeer.newChannel);
+        rtc.createOffer();
+    }, media.stream);
+    prompt.caller = true; // defines who instigator is, to split labor
+});
+ws.on('setPool', pool.onSet);
+ws.on('pool', pool.onIncrement);
