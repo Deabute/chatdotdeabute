@@ -63,7 +63,6 @@ var serviceTime = {
         serviceTime.begin.setHours(HOUR_OF_DAY, 0);             // set back to true begin time, always on hour
         serviceTime.test();
         app.proposition(); // ask about name and microphone to start getting set up
-        ws.onConnection = serviceTime.onWSConnect;
     },
     onWSConnect: function(){
         serviceTime.testOnConnect();
