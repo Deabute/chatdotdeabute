@@ -1,46 +1,43 @@
 // dependencies.js ~ copyright 2019 ~ Paul Beaudet
 // Sigletons that form base of deabute services that have little to no interdependence
 var TIME_FOR_CONSENT = 30;
-var rtc = {
+var rtc = { // stun servers in config allow client to introspect a communication path to offer a remote peer
     config: {'iceServers': [ {'urls': 'stun:stun.stunprotocol.org:3478'}, {'urls': 'stun:stun.l.google.com:19302'} ]},
-    lastMatches: [''], // stun servers in config allow client to introspect a communication path to offer a remote peer
     peer: null,                                                 // placeholder for parent webRTC object instance
     connectionId: '',                                           // oid of peer we are connected w/
     lastPeer: '',
     connectionGwid: '',
     candidates: [],
-    signalIce: function(){},
-    iceEvent: function(event){  // on address info being introspected (after local discription is set)
+    onIce: function(event){  // on address info being introspected (after local discription is set)
         if(event.candidate){ // canididate property denotes data as multiple candidates can resolve
-            console.log('compling ice..');
             rtc.candidates.push(event.candidate);
         } else {
             if(rtc.connectionGwid){
-                console.log('sending ice to host');
                 rtc.signalIce();
                 rtc.candidates = []; // remove it once we send it
-            } else {setTimeout(function(){rtc.iceEvent(event);}, 50);}
+            } else {setTimeout(function(){rtc.onIce(event);}, 50);}
         }
     }, // Note that sdp is going to be negotiated first regardless of any media being involved. its faster to resolve, maybe?
+    recieveIce: function(req){ console.log('getting ice from host');
+        for(var i = 0; i < req.candidates.length; i++){rtc.peer.addIceCandidate(req.candidates[i]);}
+    },
+    init: function(onSetupCB, stream){                                  // varify mediastream before calling
+        rtc.peer = new RTCPeerConnection(rtc.config);           // create new instance for local client
+        stream.getTracks().forEach(function(track){rtc.peer.addTrack(track, stream);});
+        rtc.peer.ontrack = function(event){document.getElementById('mediaStream').srcObject = event.streams[0];}; // behavior upon reciving track
+        rtc.peer.onicecandidate = rtc.onIce;                    // Handle ice canidate at any random time they decide to come
+        onSetupCB();                                            // create and offer or answer depending on what intiated
+    },
     createDataChannel: function(onCreation){
         var datachannel = rtc.peer.createDataChannel('chat');
         rtc.peer.ondatachannel = onCreation;           // creates data endpoints for remote peer on rtc connection
         return datachannel;
     },
-    init: function(onSetupCB, stream){                          // varify mediastream before calling
-        rtc.peer = new RTCPeerConnection(rtc.config);           // create new instance for local client
-        stream.getTracks().forEach(function(track){rtc.peer.addTrack(track, stream);});
-        rtc.peer.ontrack = media.ontrack;                       // behavior upon reciving track
-        rtc.peer.onicecandidate = rtc.iceEvent;                 // Handle ice canidate at any random time they decide to come
-        onSetupCB();          // datachannel Creates data endpoint for client's side of connection
-    },
-    offerSignal: function(){},                                  // define function externally that calls signal server
     createOffer: function(){                                    // extend offer to client so they can send it to remote
         rtc.peer.createOffer({offerToReceiveAudio: 1, offerToReceiveVideo: 0}).then( function onOffer(desc){// get sdp data to show user & share w/ friend
             return rtc.peer.setLocalDescription(desc);                        // note what sdp data self will use
         }).then(rtc.offerSignal);
     },
-    answerSignal: function(){},                                 // define function externally that calls signal server
     giveAnswer: function(sdp, oidFromOffer, gwidOfPartner){
         rtc.peer.setRemoteDescription(sdp);
         rtc.connectionId = oidFromOffer;
@@ -48,24 +45,16 @@ var rtc = {
         rtc.peer.createAnswer().then(function onAnswer(answer){ // create answer to remote peer that offered
             return rtc.peer.setLocalDescription(answer);        // set that offer as our local discripion
         }).then(function onOfferSetDesc(){rtc.answerSignal(oidFromOffer, gwidOfPartner);});
-    }, // note answer is shown to user in onicecandidate event above once resolved
+    },
     onAnswer: function(req){
         rtc.connectionId = req.id;
         rtc.connectionGwid = req.gwid;
         rtc.peer.setRemoteDescription(req.sdp);
     },
-    onIce: function(req){
-        console.log('getting ice from host');
-        for(var i = 0; i < req.candidates.length; i++){rtc.peer.addIceCandidate(req.candidates[i]);}
-    },
     close: function(talking){
         if(rtc.peer){  // clean up pre existing rtc connection if
             rtc.peer.close();
             rtc.peer = null;
-        }
-        if(talking){
-            if(rtc.lastMatches.unshift(rtc.connectionId) > 3){rtc.lastMatches.pop();}
-            localStorage.lastMatches = JSON.stringify(rtc.lastMatches);
         }
         rtc.lastPeer = rtc.connectionId;
         rtc.connectionId = '';
@@ -73,17 +62,15 @@ var rtc = {
     }
 };
 
-var dataPeer = { // requires ws, app, rtc, media
+var dataPeer = {
     channel: null,
     ready: false,       // other human is ready
     clientReady: false, // I, human am ready
     talking: false,     // WE, humans are talking
     peerName: '',
-    onClose: function(talking){},
     close: function(){
-        dataPeer.onClose(dataPeer.talking);
+        rtc.close(dataPeer.talking);
         dataPeer.talking = false;
-        dataPeer.channel = null;
         dataPeer.ready = false;
         dataPeer.peerName = '';
     },
@@ -96,9 +83,7 @@ var dataPeer = { // requires ws, app, rtc, media
             if(dataPeer.clientReady){dataPeer.readySignal();} // client may already be ready if reconnecting
         });
         receiveChannel.onmessage = dataPeer.incoming;        // handle events upon opening connection
-        receiveChannel.onopen = function onOpen(){
-            dataPeer.send({action: 'connect', username: localStorage.username});
-        };
+        receiveChannel.onopen = function onOpen(){dataPeer.send({action: 'connect', username: localStorage.username});};
     },
     handlers: [{action: 'msg', func: function(req){console.log(req.msg);}},],
     on: function(action, func){dataPeer.handlers.push({action: action, func: func});},
@@ -114,11 +99,10 @@ var dataPeer = { // requires ws, app, rtc, media
     },
     send: function(sendObj){
         if(dataPeer.channel){
-            try{msg = JSON.stringify(msg);} catch(error){return;}
-            dataPeer.channel.send(msg);
+            try{sendObj = JSON.stringify(sendObj);} catch(error){console.log(error);return;}
+            dataPeer.channel.send(sendObj);
         }
     },
-    onDisconnect: function(human){},
     disconnect: function(human){
         if(human){dataPeer.send({action: 'disconnect'});} // tell friend we are done
         dataPeer.clientReady = false;        // no longer ready
@@ -132,9 +116,6 @@ var dataPeer = { // requires ws, app, rtc, media
             dataPeer.whenReady();
         } else { dataPeer.setReconsentActive();}
     },
-    setReconsentInactive: function(){},
-    setReconsentActive: function(){},
-    onReady: function(){},
     whenReady: function(){
         if(dataPeer.ready){
             dataPeer.talking = true;
@@ -142,7 +123,6 @@ var dataPeer = { // requires ws, app, rtc, media
             dataPeer.onReady();
         } else {dataPeer.ready = true;}
     },
-    inactiveOnConfluence: function(){},
     onConfluence: function(){       // happens at confluence time
         if(!dataPeer.talking){      // given conversation is a dud
             if(dataPeer.peerName){dataPeer.send({action: 'terminate'});} // this needs more explaination
@@ -167,7 +147,6 @@ var pool = {
 };
 
 var media = {
-    output: document.getElementById('mediaStream'),
     stream: null,
     init: function(onMedia){ // get user permistion to use media
         var onMediaCallback = onMedia ? onMedia : function noSoupForYou(){};
@@ -181,7 +160,6 @@ var media = {
             } else {onMediaCallback('woah! no audio', null);}
         }).catch(function onNoMedia(error){onMediaCallback(error, null);});
     },
-    ontrack: function(event){media.output.srcObject = event.streams[0];},
     switchAudio: function(on){
         var audioTracks = media.stream.getAudioTracks();
         if(audioTracks.length){
@@ -191,7 +169,7 @@ var media = {
     }
 };
 
-var prompt = { // requires persistence
+var prompt = {
     caller: false,
     feild: document.getElementById('promptFeild'),
     form: document.getElementById('promptForm'),
@@ -253,19 +231,10 @@ var persistence = {
             if(!localStorage.username){localStorage.username = 'Anonymous';}
             if(localStorage.answers){persistence.answers = JSON.parse(localStorage.answers);}
             else                    {localStorage.answers = JSON.stringify(persistence.answers);}
-            if(localStorage.lastMatches){
-                if(serviceTime.WINDOW === 't'){localStorage.lastMatches = '[""]';}
-                else {rtc.lastMatches = JSON.parse(localStorage.lastMatches);}
-            } else {
-                if(serviceTime.WINDOW === 't'){localStorage.lastMatches = '[""]';}
-                else {localStorage.lastMatches = JSON.stringify(rtc.lastMatches);}
-            }
             onStorageLoad(true);
         } else { onStorageLoad(false); }
     },
-    saveAnswer: function(){
-        localStorage.answers = JSON.stringify(persistence.answers);
-    },
+    saveAnswer: function(){localStorage.answers = JSON.stringify(persistence.answers);},
     createOid: function(){
         var increment = Math.floor(Math.random() * (16777216)).toString(16);
         var pid = Math.floor(Math.random() * (65536)).toString(16);
@@ -294,7 +263,7 @@ var ws = {
         ws.active = false;
     },
     repool: function(){
-        if(!ws.active){ws.send({action: 'repool', oid: localStorage.oid, lastMatches: rtc.lastMatches});} // let server know we can be rematched
+        if(!ws.active){ws.send({action: 'repool', oid: localStorage.oid});} // let server know we can be rematched
         ws.active = true;
     },
     handlers: [{action: 'msg', func: function(req){console.log(req.msg);}},],
@@ -311,19 +280,8 @@ var ws = {
         if(req.message === 'Internal server error'){console.log('Opps something when wrong: ' + JSON.stringify(req));return;}
         console.log('no handler ' + event.data);
     },
-    serror: "{\"action\":\"error\",\"error\":\"failed stringify\"}",
     send: function(msg){
-        if(ws.instance){
-            try{msg = JSON.stringify(msg);} catch(error){msg = ws.serror;}
-            ws.instance.send(msg);
-        } else { // otherwise try to reconnect
-            ws.init(function onReconnect(){
-                msg.originAction = msg.action;
-                msg.action = 'reconnect';
-                msg.oid = localStorage.oid;
-                try{msg = JSON.stringify(msg);} catch(e){msg = ws.serror;}
-                ws.instance.send(msg);
-            });
-        }
+        try{msg = JSON.stringify(msg);} catch(error){msg = "{\"action\":\"error\",\"error\":\"failed stringify\"}";}
+        if(ws.instance){ws.instance.send(msg);}
     }
 };
