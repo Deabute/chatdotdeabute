@@ -1,8 +1,8 @@
 // rtctest.js ~ copyright 2019 Paul Beaudet ~ MIT License
 // rtcSignal version - 1.0.28
 // This test requires at least two browser windows, to open a data connection between two peer
-var DAY_OF_WEEK = 0;
-var HOUR_OF_DAY = 15;
+var DAY_OF_WEEK = 2;
+var HOUR_OF_DAY = 17;
 var CONSENT_MINUTE = 11;
 var OPEN_MINUTE = CONSENT_MINUTE - 10;
 var CONFLUENCE_MINUTE = CONSENT_MINUTE;
@@ -38,6 +38,7 @@ var serviceTime = {
         app.timeouts = setTimeout(serviceTime.open, millisTill); // open in upcoming window
     },
     outside: function(username){
+        serviceTime.sessionInd.hidden = false;
         serviceTime.test();
         var dayNow = serviceTime.begin.getDay();
         var dateNow = serviceTime.begin.getDate();
@@ -103,6 +104,46 @@ var serviceTime = {
     }
 };
 
+var MAIN_LOBBY_NAME = 'Deabute';
+var lobby = {
+    info: document.getElementById('lobby'),
+    dialog: document.getElementById('lobbyInfo'),
+    isLobby: false,
+    name: MAIN_LOBBY_NAME,
+    type: 'user',
+    mine: false,
+    init: function(inLobby){
+        var addressArray =  window.location.href.split('/');
+        if(addressArray.length === 4){
+            var route = addressArray[3];
+            var regex = /^[a-z]+$/;                                         // make sure there are only lowercase a-z to the last letter
+            if(regex.test(route)){
+                lobby.name = route;
+                lobby.dialog.hidden = false;
+                inLobby(true);
+                return;
+            }
+        }
+        inLobby(false);
+    },
+    status: function(req){
+        if(req.isLobby){
+            if(req.lobbytype){lobby.type = req.lobbytype;}
+            if(localStorage.token && localStorage.oid && localStorage.username){
+                if(lobby.name === localStorage.username){lobby.mine = true;}
+                deabute.onUser(lobby.mine, lobby.name, localStorage.username);
+                if(lobby.mine){ // probably need to use a token to confirm this at one point
+                    app.proposition();
+                    lobby.info.hidden = true;
+                } else {lobby.info.innerHTML = lobby.name + ' is ' + req.status;}
+            } else {
+                lobby.info.innerHTML = lobby.name + ' is ' + req.status;
+                if(req.status === 'ready'){app.proposition();}
+            }
+        } else {lobby.info.innerHTML = 'Sorry, not much is here. Aside from this text';}
+    }
+};
+
 var app = {
     setupInput: document.getElementById('setupInput'),
     setupButton: document.getElementById('setupButton'),
@@ -141,8 +182,15 @@ var app = {
             if(issue){app.issue(issue);}
             else if(mediaStream){
                 ws.init(function(){
-                    ws.send({action: 'connected', oid: localStorage.oid});
-                    serviceTime.onWSConnect();
+                    var token = ''; var type = ''; var link = '';
+                    if(lobby.name === MAIN_LOBBY_NAME){
+                        serviceTime.onWSConnect();
+                    } else {
+                        if(lobby.name === localStorage.username){token = localStorage.token;}
+                        type = lobby.type; link = lobby.name;
+                        dataPeer.consent = function(peer){app.consent(peer);};
+                    }
+                    ws.send({action: 'connected', oid: localStorage.oid, type: type, link: link, token: token});
                 });
             } else {app.issue('No media stream present');}
         });
@@ -157,12 +205,15 @@ var app = {
         app.discription.innerHTML = '';
         app.connectButton.hidden = true;
     },
-    consent: function(){
+    consent: function(peer){
+        peer = peer ? peer : 'peer';
         dataPeer.clientReady = false;
-        app.discription.innerHTML = 'Are you ready to chat?';
+        var greet = 'Are you ready to chat?';
+        if(lobby.mine){greet = peer + ' would like to talk with you?';}
+        app.discription.innerHTML = greet;
         app.connectButton.innerHTML = 'Ready to talk';
         app.connectButton.onclick = function oneClientReady(){
-            app.discription.innerHTML = 'Waiting for peer';
+            app.discription.innerHTML = 'Waiting for ' + peer;
             app.connectButton.hidden = true;
             dataPeer.readySignal();
         };
@@ -181,32 +232,32 @@ var app = {
     }
 };
 
-// document.addEventListener('DOMContentLoaded', function(){       // wait till dom is loaded before manipulating it
-    persistence.init(function onLocalRead(capible){
-        if(capible){
-            window.addEventListener("beforeunload", function(event){
-                event.returnValue = '';
-                if(ws.instance){dataPeer.close();ws.reduce(false);}
-                app.clearTimeouts();
+persistence.init(function onLocalRead(capible){
+    if(capible){
+        window.addEventListener("beforeunload", function(event){
+            event.returnValue = '';
+            if(ws.instance){dataPeer.close();ws.reduce(false);}
+            app.clearTimeouts();
+        });
+        lobby.init(function(inLobby){
+            wsDeabute.init(function(){
+                deabute.init();
+                if(inLobby){
+                    wsDeabute.on('status', lobby.status);
+                    wsDeabute.send({action: 'status', lobby: lobby.name});
+                } else {
+                    serviceTime.outside();
+                }
             });
-            lobby.init(function(inLobby){
-                wsDeabute.init(function(){
-                    deabute.init();
-                    if(inLobby){
-                        wsDeabute.send({action: 'status', lobby: lobby.name});
-                        wsDeabute.on('satuts', lobby.status);
-                    } else {
-                        serviceTime.outside();
-                    }
-                });
-            });
-        } else {app.discription.innerHTML = 'Incompatible browser';}
-    });
-// });
+        });
+    } else {app.discription.innerHTML = 'Incompatible browser';}
+});
 
 rtc.signalIce = function(){ws.send({action: 'ice', oid: localStorage.oid, candidates: rtc.candidates, gwid: rtc.connectionGwid});};
 rtc.offerSignal = function(){
-    ws.send({action: 'offer', oid: localStorage.oid, sdp: rtc.peer.localDescription}); // send offer to connect
+    var type = ''; var link = '';
+    if(lobby.name !== MAIN_LOBBY_NAME){type = lobby.type; link = lobby.name;}
+    ws.send({action: 'offer', oid: localStorage.oid, sdp: rtc.peer.localDescription, type: type, link: link}); // send offer to connect
     console.log('making offer');
 };
 rtc.answerSignal = function(oidFromOffer, gwidOfPartner){

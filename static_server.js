@@ -7,7 +7,7 @@ module.exports = function serve(){
     var router = express.Router();
     router.get('/:erm', function(req, res){
         res.status(200);
-        res.sendFile(path.join(__dirname + '/build/redirect.html'));
+        res.sendFile(path.join(__dirname + '/build/index.html'));
     });
     app.use(router);
 

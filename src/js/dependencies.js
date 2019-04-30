@@ -68,6 +68,7 @@ var dataPeer = {
     clientReady: false, // I, human am ready
     talking: false,     // WE, humans are talking
     peerName: '',
+    consent: function(){},
     close: function(){
         rtc.close(dataPeer.talking);
         dataPeer.talking = false;
@@ -80,6 +81,7 @@ var dataPeer = {
         dataPeer.on('ready', dataPeer.whenReady);
         dataPeer.on('connect', function(req){
             dataPeer.peerName = req.username; console.log('connected to ' + req.username);
+            dataPeer.consent(req.username);
             if(dataPeer.clientReady){dataPeer.readySignal();} // client may already be ready if reconnecting
         });
         receiveChannel.onmessage = dataPeer.incoming;        // handle events upon opening connection
