@@ -136,6 +136,7 @@ var dataPeer = {
 };
 
 var pool = {
+    indicator: document.getElementById('poolInd'),
     display: document.getElementById('pool'),
     count: 0, // assume peer is counted in pool
     onIncrement: function(req){

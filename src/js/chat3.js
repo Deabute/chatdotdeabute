@@ -106,8 +106,6 @@ var serviceTime = {
 
 var MAIN_LOBBY_NAME = 'Deabute';
 var lobby = {
-    info: document.getElementById('lobby'),
-    dialog: document.getElementById('lobbyInfo'),
     isLobby: false,
     name: MAIN_LOBBY_NAME,
     type: 'user',
@@ -119,12 +117,15 @@ var lobby = {
             var regex = /^[a-z]+$/;                                         // make sure there are only lowercase a-z to the last letter
             if(regex.test(route)){
                 lobby.name = route;
-                lobby.dialog.hidden = false;
                 inLobby(true);
                 return;
             }
         }
         inLobby(false);
+    },
+    visitor: function(req){
+        app.discription.innerHTML = lobby.name + ' is ' + req.status;
+        if(req.status === 'ready'){app.proposition();}
     },
     status: function(req){
         if(req.isLobby){
@@ -133,19 +134,15 @@ var lobby = {
                 if(lobby.name === localStorage.username){lobby.mine = true;}
                 deabute.onUser(lobby.mine, lobby.name, localStorage.username);
                 if(lobby.mine){ // probably need to use a token to confirm this at one point
+                    app.discription.innerHTML = 'Indicating you are availible in this room';
                     app.proposition();
-                    lobby.info.hidden = true;
-                } else {lobby.info.innerHTML = lobby.name + ' is ' + req.status;}
-            } else {
-                lobby.info.innerHTML = lobby.name + ' is ' + req.status;
-                if(req.status === 'ready'){app.proposition();}
-            }
-        } else {lobby.info.innerHTML = 'Sorry, not much is here. Aside from this text';}
+                } else {lobby.visitor(req);}
+            } else {lobby.visitor(req);}
+        } else {app.discription.innerHTML = 'Sorry, not much is here. Aside from this text';}
     }
 };
 
 var app = {
-    interface: document.getElementById('mainAppInterface'),
     setupInput: document.getElementById('setupInput'),
     setupButton: document.getElementById('setupButton'),
     connectButton: document.getElementById('connectButton'),
@@ -161,7 +158,6 @@ var app = {
         app.discription.innerHTML = 'Please wait till our next scheduled matching to participate';
     },
     proposition: function(){
-        // app.interface.hidden = false;
         app.setupButton.hidden = false;
         app.setupInput.hidden = false;
         if(localStorage.username !== 'Anonymous'){
@@ -317,7 +313,10 @@ persistence.init(function onLocalRead(capible){
                     if(localStorage.token && localStorage.oid && localStorage.username){deabute.status.innerHTML = '';}
                     ws.send({action: 'status', lobby: lobby.name});
                 });
-            } else {serviceTime.outside();}
+            } else {
+                pool.indicator.hidden = false;
+                serviceTime.outside();
+            }
         });
     } else {app.discription.innerHTML = 'Incompatible browser';}
 });
