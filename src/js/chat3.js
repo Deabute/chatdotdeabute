@@ -232,78 +232,94 @@ var app = {
     }
 };
 
+var setup = { // methods that are interconnected and intertwined with dependancies
+    ws: function(){
+        ws.on('offer', function(req){
+            rtc.init(function(dataChannel){
+                dataPeer.channel = rtc.createDataChannel(dataPeer.newChannel);
+                rtc.giveAnswer(req.sdp, req.id, req.gwid);
+            }, media.stream);
+        });
+        ws.on('answer', rtc.onAnswer);
+        ws.on('ice', rtc.recieveIce);
+        ws.on('makeOffer', function(req){
+            if(req.pool){pool.onSet(req);}
+            rtc.init(function(dataChannel){
+                dataPeer.channel = rtc.createDataChannel(dataPeer.newChannel);
+                rtc.createOffer();
+            }, media.stream);
+            prompt.caller = true; // defines who instigator is, to split labor
+        });
+        ws.on('setPool', pool.onSet);
+        ws.on('pool', pool.onIncrement);
+        ws.on('loggedin', deabute.onLogin);
+        ws.on('signedup', deabute.onSignup);
+        ws.on('reject', deabute.rejected);
+        ws.on('fail', deabute.onFail);
+        ws.on('status', lobby.status);
+    },
+    dataPeer: function(){
+        dataPeer.on('disconnect', app.disconnect);
+        dataPeer.onClose = function(talking){rtc.close(talking);};
+        dataPeer.inactiveOnConfluence = function(){
+            ws.reduce(true);
+            app.connectButton.onclick = function(){
+                dataPeer.clientReady = true;
+                dataPeer.setReconsentInactive();
+            };
+        };
+        dataPeer.onDisconnect = function(){ws.send({action: 'pause', oid: localStorage.oid});};
+        dataPeer.onReady = function(){
+            console.log('about to turn on microphone');
+            media.switchAudio(true); // switch audio on
+            ws.reduce(false);        // reduce from connection pool
+            app.whenConnected();     // change app to look like connected
+        };
+        dataPeer.setReconsentInactive = function(){
+            ws.repool();
+            app.timeouts = setTimeout(app.consent, TIME_FOR_CONSENT * 1000);
+        };
+        dataPeer.setReconsentActive = function(){
+            if(pool.count > 1){ws.send({action: 'unmatched', oid: localStorage.oid});} // let server know we can be rematched
+            app.timeouts = setTimeout(app.consent, TIME_FOR_CONSENT * 1000);
+        };
+    },
+    rtc: function(){
+        rtc.signalIce = function(){ws.send({action: 'ice', oid: localStorage.oid, candidates: rtc.candidates, gwid: rtc.connectionGwid});};
+        rtc.offerSignal = function(){
+            var type = ''; var link = '';
+            if(lobby.name !== MAIN_LOBBY_NAME){type = lobby.type; link = lobby.name;}
+            ws.send({action: 'offer', oid: localStorage.oid, sdp: rtc.peer.localDescription, type: type, link: link}); // send offer to connect
+            console.log('making offer');
+        };
+        rtc.answerSignal = function(oidFromOffer, gwidOfPartner){
+            console.log('sending answer to ' + oidFromOffer);
+            ws.send({action: 'answer', oid: localStorage.oid, sdp: rtc.peer.localDescription, peerId: oidFromOffer, gwid: gwidOfPartner});
+        };
+    }
+};
+
 persistence.init(function onLocalRead(capible){
     if(capible){
         window.addEventListener("beforeunload", function(event){
             event.returnValue = '';
-            if(ws.instance){dataPeer.close();ws.reduce(false);}
+            if(ws.instance){
+                dataPeer.close();
+                ws.reduce(false);
+            }
             app.clearTimeouts();
         });
         lobby.init(function(inLobby){
-            wsDeabute.init(function(){
-                deabute.init();
-                if(inLobby){
-                    wsDeabute.on('status', lobby.status);
-                    wsDeabute.send({action: 'status', lobby: lobby.name});
-                } else {
-                    serviceTime.outside();
-                }
-            });
+            if(inLobby){
+                ws.init(function(){
+                    if(localStorage.token && localStorage.oid && localStorage.username){deabute.status.innerHTML = '';}
+                    ws.send({action: 'status', lobby: lobby.name});
+                });
+            } else {serviceTime.outside();}
         });
     } else {app.discription.innerHTML = 'Incompatible browser';}
 });
 
-rtc.signalIce = function(){ws.send({action: 'ice', oid: localStorage.oid, candidates: rtc.candidates, gwid: rtc.connectionGwid});};
-rtc.offerSignal = function(){
-    var type = ''; var link = '';
-    if(lobby.name !== MAIN_LOBBY_NAME){type = lobby.type; link = lobby.name;}
-    ws.send({action: 'offer', oid: localStorage.oid, sdp: rtc.peer.localDescription, type: type, link: link}); // send offer to connect
-    console.log('making offer');
-};
-rtc.answerSignal = function(oidFromOffer, gwidOfPartner){
-    console.log('sending answer to ' + oidFromOffer);
-    ws.send({action: 'answer', oid: localStorage.oid, sdp: rtc.peer.localDescription, peerId: oidFromOffer, gwid: gwidOfPartner});
-};
-
-dataPeer.on('disconnect', app.disconnect);
-dataPeer.onClose = function(talking){rtc.close(talking);};
-dataPeer.inactiveOnConfluence = function(){
-    ws.reduce(true);
-    app.connectButton.onclick = function(){
-        dataPeer.clientReady = true;
-        dataPeer.setReconsentInactive();
-    };
-};
-dataPeer.onDisconnect = function(){ws.send({action: 'pause', oid: localStorage.oid});};
-dataPeer.onReady = function(){
-    console.log('about to turn on microphone');
-    media.switchAudio(true); // switch audio on
-    ws.reduce(false);        // reduce from connection pool
-    app.whenConnected();     // change app to look like connected
-};
-dataPeer.setReconsentInactive = function(){
-    ws.repool();
-    app.timeouts = setTimeout(app.consent, TIME_FOR_CONSENT * 1000);
-};
-dataPeer.setReconsentActive = function(){
-    if(pool.count > 1){ws.send({action: 'unmatched', oid: localStorage.oid});} // let server know we can be rematched
-    app.timeouts = setTimeout(app.consent, TIME_FOR_CONSENT * 1000);
-};
-ws.on('offer', function(req){
-    rtc.init(function(dataChannel){
-        dataPeer.channel = rtc.createDataChannel(dataPeer.newChannel);
-        rtc.giveAnswer(req.sdp, req.id, req.gwid);
-    }, media.stream);
-});
-ws.on('answer', rtc.onAnswer);
-ws.on('ice', rtc.recieveIce);
-ws.on('makeOffer', function(req){
-    if(req.pool){pool.onSet(req);}
-    rtc.init(function(dataChannel){
-        dataPeer.channel = rtc.createDataChannel(dataPeer.newChannel);
-        rtc.createOffer();
-    }, media.stream);
-    prompt.caller = true; // defines who instigator is, to split labor
-});
-ws.on('setPool', pool.onSet);
-ws.on('pool', pool.onIncrement);
+setup.rtc();
+setup.ws();
+setup.dataPeer();

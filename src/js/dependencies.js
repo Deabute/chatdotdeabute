@@ -252,13 +252,17 @@ var ws = {
     instance: null,                                // placeholder for websocket object
     server: document.getElementById('socketserver').innerHTML,
     init: function(onConnection){
-        ws.instance = new WebSocket(ws.server);
-        ws.instance.onopen = function(){
-            ws.active = true;
-            ws.instance.onmessage = ws.incoming;
-            ws.onclose = function onSocketClose(){ws.instance = null;};
+        if(ws.instance){ // makes it so that init function can be called liberally to assure that we are maintaning connetion
             if(onConnection){onConnection();}
-        };
+        } else {
+            ws.instance = new WebSocket(ws.server);
+            ws.instance.onopen = function(){
+                ws.active = true;
+                ws.instance.onmessage = ws.incoming;
+                ws.onclose = function onSocketClose(){ws.instance = null;};
+                if(onConnection){onConnection();}
+            };
+        }
     },
     reduce: function(pause){
         if(ws.active){ws.send({action:'reduce', oid: localStorage.oid, pause: pause});}
@@ -284,6 +288,57 @@ var ws = {
     },
     send: function(msg){
         try{msg = JSON.stringify(msg);} catch(error){msg = "{\"action\":\"error\",\"error\":\"failed stringify\"}";}
-        if(ws.instance){ws.instance.send(msg);}
+        ws.init(function(){ws.instance.send(msg);});
     }
+};
+
+var deabute = {
+    signupButton: document.getElementById('signup'),
+    loginButton: document.getElementById('login'),
+    username: document.getElementById('username'),
+    password: document.getElementById('password'),
+    accountOptions: document.getElementById('accountOptions'),
+    credBox: document.getElementById('credBox'),
+    status: document.getElementById('accountStatus'),
+    accountAction: 'signup',
+    login: function(){deabute.display('login');},
+    signup: function(){deabute.display('signup');},
+    display: function(action){
+        deabute.accountAction = action;
+        deabute.accountOptions.hidden = true;
+        deabute.status.hidden = false;
+        deabute.credBox.hidden = false; // show sign up box
+    },
+    submit: function(){
+        var regex = /^[a-z]+$/;                                         // make sure there are only lowercase a-z to the last letter
+        if(deabute.username.value && deabute.password.value){
+            if(regex.test(deabute.username.value)){
+                deabute.credBox.hidden = true;
+                ws.send({action: deabute.accountAction, username: deabute.username.value, password: deabute.password.value, oid: localStorage.oid});
+            } else {deabute.status.innerHTML = 'Username must be lowercase letters';}
+        } else {deabute.status.innerHTML = 'Missing information';}
+    },
+    onUser: function(mine, lobbyname, username){
+        if(mine){deabute.status.innerHTML = 'Hey ' + username + '! Welcome to your lobby';}
+        else    {deabute.status.innerHTML = 'Hey ' + username + '! Welcome to ' + lobbyname + '\'s lobby';}
+        deabute.status.hidden = false;
+    },
+    onLogin: function(req){
+        if(req.token && req.oid){
+            localStorage.oid = req.oid;
+            localStorage.username = deabute.username.value;
+            localStorage.token = req.token;
+            deabute.onUser(lobby.mine, lobby.name, localStorage.username);
+        } else {deabute.status.innerHTML = 'Opps something when wrong';}
+    },
+    onSignup: function(req){
+        deabute.onUser(lobby.mine, lobby.name, localStorage.username);
+        deabute.credBox.hidden = true;
+    },
+    rejected: function(req){
+        console.log('on rejected');
+        deabute.status.innerHTML = req.msg;
+        deabute.credBox.hidden = false;
+    },
+    onFail: function(req){deabute.status.innerHTML = req.msg;}
 };
