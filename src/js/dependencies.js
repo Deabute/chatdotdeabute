@@ -332,7 +332,7 @@ var deabute = {
         } else {deabute.status.innerHTML = 'Opps something when wrong';}
     },
     onSignup: function(req){
-        deabute.onUser(lobby.mine, lobby.name, localStorage.username);
+        deabute.onUser(lobby.mine, lobby.name, deabute.username.value);
         deabute.credBox.hidden = true;
     },
     rejected: function(req){

@@ -1,8 +1,8 @@
 // rtctest.js ~ copyright 2019 Paul Beaudet ~ MIT License
 // rtcSignal version - 1.0.28
 // This test requires at least two browser windows, to open a data connection between two peer
-var DAY_OF_WEEK = 2;
-var HOUR_OF_DAY = 17;
+var DAY_OF_WEEK = 3;
+var HOUR_OF_DAY = 14;
 var CONSENT_MINUTE = 11;
 var OPEN_MINUTE = CONSENT_MINUTE - 10;
 var CONFLUENCE_MINUTE = CONSENT_MINUTE;
@@ -145,6 +145,7 @@ var lobby = {
 };
 
 var app = {
+    interface: document.getElementById('mainAppInterface'),
     setupInput: document.getElementById('setupInput'),
     setupButton: document.getElementById('setupButton'),
     connectButton: document.getElementById('connectButton'),
@@ -160,6 +161,7 @@ var app = {
         app.discription.innerHTML = 'Please wait till our next scheduled matching to participate';
     },
     proposition: function(){
+        // app.interface.hidden = false;
         app.setupButton.hidden = false;
         app.setupInput.hidden = false;
         if(localStorage.username !== 'Anonymous'){
