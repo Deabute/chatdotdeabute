@@ -1,8 +1,8 @@
 // rtctest.js ~ copyright 2019 Paul Beaudet ~ MIT License
 // rtcSignal version - 1.0.28
 // This test requires at least two browser windows, to open a data connection between two peer
-var DAY_OF_WEEK = 3;
-var HOUR_OF_DAY = 14;
+var DAY_OF_WEEK = 5;
+var HOUR_OF_DAY = 20;
 var CONSENT_MINUTE = 11;
 var OPEN_MINUTE = CONSENT_MINUTE - 10;
 var CONFLUENCE_MINUTE = CONSENT_MINUTE;
@@ -301,17 +301,15 @@ persistence.init(function onLocalRead(capible){
     if(capible){
         window.addEventListener("beforeunload", function(event){
             event.returnValue = '';
-            if(ws.instance){
-                dataPeer.close();
-                ws.reduce(false);
-            }
+            ws.msg('remove');
+            dataPeer.close();
             app.clearTimeouts();
         });
         lobby.init(function(inLobby){
             if(inLobby){
                 ws.init(function(){
                     if(localStorage.token && localStorage.oid && localStorage.username){deabute.status.innerHTML = '';}
-                    ws.send({action: 'status', lobby: lobby.name});
+                    ws.msg('status', {lobby: lobby.name});
                 });
             } else {
                 pool.indicator.hidden = false;

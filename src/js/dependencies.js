@@ -273,7 +273,7 @@ var ws = {
         if(!ws.active){ws.send({action: 'repool', oid: localStorage.oid});} // let server know we can be rematched
         ws.active = true;
     },
-    handlers: [{action: 'msg', func: function(req){console.log(req.msg);}},],
+    handlers: [{action: 'msg', func: function(req){console.log(req.msg);}}],
     on: function(action, func){ws.handlers.push({action: action, func: func});},
     incoming: function(event){                            // handle incoming socket messages
         var req = {action: null};                           // request
@@ -290,6 +290,11 @@ var ws = {
     send: function(msg){
         try{msg = JSON.stringify(msg);} catch(error){msg = "{\"action\":\"error\",\"error\":\"failed stringify\"}";}
         ws.init(function(){ws.instance.send(msg);});
+    },
+    msg: function(action, json){
+        json = json ? json : {};
+        json.action = action;
+        ws.send(json);
     }
 };
 
