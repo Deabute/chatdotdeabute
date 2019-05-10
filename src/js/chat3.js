@@ -106,9 +106,7 @@ var serviceTime = {
 
 var MAIN_LOBBY_NAME = 'Deabute';
 var lobby = {
-    isLobby: false,
     name: MAIN_LOBBY_NAME,
-    type: 'user',
     mine: false,
     init: function(inLobby){
         var addressArray =  window.location.href.split('/');
@@ -117,21 +115,21 @@ var lobby = {
             var regex = /^[a-z]+$/;                                         // make sure there are only lowercase a-z to the last letter
             if(regex.test(route)){
                 lobby.name = route;
-                inLobby(true);
+                inLobby(route);
                 return;
             }
         }
-        inLobby(false);
+        inLobby();
     },
     visitor: function(req){
         app.discription.innerHTML = lobby.name + ' is ' + req.status;
         if(req.status === 'ready'){app.proposition();}
     },
     status: function(req){
-        if(req.isLobby){
-            if(req.lobbytype){lobby.type = req.lobbytype;}
+        if(req.exist){
             if(localStorage.token && localStorage.oid && localStorage.username){
-                if(lobby.name === localStorage.username){lobby.mine = true;}
+                if(req.owner){lobby.mine = true;}
+                // if(lobby.name === localStorage.username){lobby.mine = true;}
                 deabute.onUser(lobby.mine, lobby.name, localStorage.username);
                 if(lobby.mine){ // probably need to use a token to confirm this at one point
                     app.discription.innerHTML = 'Indicating you are availible in this room';
@@ -179,13 +177,13 @@ var app = {
         media.init(function onMic(issue, mediaStream){
             if(issue){app.issue(issue);}
             else if(mediaStream){
-                ws.init(function(){
+                ws.init(function(){ // ws.init will have likely already been called to get status, connections can timeout in 2 minutes, needing a second init
                     var token = ''; var type = ''; var link = '';
                     if(lobby.name === MAIN_LOBBY_NAME){
                         serviceTime.onWSConnect();
                     } else {
-                        if(lobby.name === localStorage.username){token = localStorage.token;}
-                        type = lobby.type; link = lobby.name;
+                        if(lobby.mine){token = localStorage.token;} // this will already be determined by status call
+                        type = 'single'; link = lobby.name;
                         dataPeer.consent = function(peer){app.consent(peer);};
                     }
                     ws.send({action: 'connected', oid: localStorage.oid, type: type, link: link, token: token});
@@ -286,7 +284,7 @@ var setup = { // methods that are interconnected and intertwined with dependanci
         rtc.signalIce = function(){ws.send({action: 'ice', oid: localStorage.oid, candidates: rtc.candidates, gwid: rtc.connectionGwid});};
         rtc.offerSignal = function(){
             var type = ''; var link = '';
-            if(lobby.name !== MAIN_LOBBY_NAME){type = lobby.type; link = lobby.name;}
+            if(lobby.name !== MAIN_LOBBY_NAME){type = 'single'; link = lobby.name;}
             ws.send({action: 'offer', oid: localStorage.oid, sdp: rtc.peer.localDescription, type: type, link: link}); // send offer to connect
             console.log('making offer');
         };
@@ -305,11 +303,13 @@ persistence.init(function onLocalRead(capible){
             dataPeer.close();
             app.clearTimeouts();
         });
-        lobby.init(function(inLobby){
-            if(inLobby){
+        lobby.init(function(channelName){
+            if(channelName){
                 ws.init(function(){
-                    if(localStorage.token && localStorage.oid && localStorage.username){deabute.status.innerHTML = '';}
-                    ws.msg('status', {lobby: lobby.name});
+                    if(localStorage.token && localStorage.oid && localStorage.username){
+                        deabute.status.innerHTML = '';
+                        ws.msg('status', {channel: channelName, token: localStorage.token, oid: localStorage.oid});
+                    } else {ws.msg('status', {channel: channelName});}
                 });
             } else {
                 pool.indicator.hidden = false;
