@@ -2,7 +2,7 @@
 // rtcSignal version - 1.0.28
 // This test requires at least two browser windows, to open a data connection between two peer
 var DAY_OF_WEEK = 5;
-var HOUR_OF_DAY = 20;
+var HOUR_OF_DAY = 15;
 var CONSENT_MINUTE = 11;
 var OPEN_MINUTE = CONSENT_MINUTE - 10;
 var CONFLUENCE_MINUTE = CONSENT_MINUTE;
@@ -129,7 +129,6 @@ var lobby = {
         if(req.exist){
             if(localStorage.token && localStorage.oid && localStorage.username){
                 if(req.owner){lobby.mine = true;}
-                // if(lobby.name === localStorage.username){lobby.mine = true;}
                 deabute.onUser(lobby.mine, lobby.name, localStorage.username);
                 if(lobby.mine){ // probably need to use a token to confirm this at one point
                     app.discription.innerHTML = 'Indicating you are availible in this room';
@@ -299,7 +298,7 @@ persistence.init(function onLocalRead(capible){
     if(capible){
         window.addEventListener("beforeunload", function(event){
             event.returnValue = '';
-            ws.msg('remove');
+            ws.msg('remove', {owner: localStorage.paid === 'true' ? true : false, token: localStorage.token, oid: localStorage.oid});
             dataPeer.close();
             app.clearTimeouts();
         });

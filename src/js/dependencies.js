@@ -231,6 +231,7 @@ var persistence = {
     init: function(onStorageLoad){
         if(localStorage){
             if(!localStorage.oid){localStorage.oid = persistence.createOid();}
+            if(!localStorage.paid){localStorage.paid = false;}
             if(!localStorage.username){localStorage.username = 'Anonymous';}
             if(localStorage.answers){persistence.answers = JSON.parse(localStorage.answers);}
             else                    {localStorage.answers = JSON.stringify(persistence.answers);}
@@ -266,7 +267,7 @@ var ws = {
         }
     },
     reduce: function(pause){
-        if(ws.active){ws.send({action:'reduce', oid: localStorage.oid, pause: pause});}
+        if(ws.active){ws.send({action:'reduce', oid: localStorage.oid, pause: pause, owner: localStorage.paid === 'true' ? true : false, token: localStorage.token});}
         ws.active = false;
     },
     repool: function(){
@@ -334,6 +335,7 @@ var deabute = {
             localStorage.oid = req.oid;
             localStorage.username = deabute.username.value;
             localStorage.token = req.token;
+            localStorage.paid = req.paid;
             deabute.onUser(lobby.mine, lobby.name, localStorage.username);
         } else {deabute.status.innerHTML = 'Opps something when wrong';}
     },
