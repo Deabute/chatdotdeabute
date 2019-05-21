@@ -1,8 +1,8 @@
 // rtctest.js ~ copyright 2019 Paul Beaudet ~ MIT License
 // rtcSignal version - 1.0.28
 // This test requires at least two browser windows, to open a data connection between two peer
-var DAY_OF_WEEK = 5;
-var HOUR_OF_DAY = 15;
+var DAY_OF_WEEK = 2;
+var HOUR_OF_DAY = 17;
 var CONSENT_MINUTE = 11;
 var OPEN_MINUTE = CONSENT_MINUTE - 10;
 var CONFLUENCE_MINUTE = CONSENT_MINUTE;
@@ -185,7 +185,7 @@ var app = {
                         type = 'single'; link = lobby.name;
                         dataPeer.consent = function(peer){app.consent(peer);};
                     }
-                    ws.send({action: 'connected', oid: localStorage.oid, type: type, link: link, token: token});
+                    ws.send({action: 'connected', oid: localStorage.oid, type: type, link: link, owner: localStorage.paid === 'true' ? true : false, token: localStorage.token});
                 });
             } else {app.issue('No media stream present');}
         });

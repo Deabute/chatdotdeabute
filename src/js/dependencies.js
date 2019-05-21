@@ -231,6 +231,7 @@ var persistence = {
     init: function(onStorageLoad){
         if(localStorage){
             if(!localStorage.oid){localStorage.oid = persistence.createOid();}
+            if(!localStorage.token){localStorage.token = '';}
             if(!localStorage.paid){localStorage.paid = false;}
             if(!localStorage.username){localStorage.username = 'Anonymous';}
             if(localStorage.answers){persistence.answers = JSON.parse(localStorage.answers);}
@@ -271,7 +272,7 @@ var ws = {
         ws.active = false;
     },
     repool: function(){
-        if(!ws.active){ws.send({action: 'repool', oid: localStorage.oid});} // let server know we can be rematched
+        if(!ws.active){ws.send({action: 'repool', oid: localStorage.oid, owner: localStorage.paid === 'true' ? true : false, token: localStorage.token});} // let server know we can be rematched
         ws.active = true;
     },
     handlers: [{action: 'msg', func: function(req){console.log(req.msg);}}],
