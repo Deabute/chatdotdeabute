@@ -1,7 +1,7 @@
 {
   "name": "chatDotDeabute",
   "private": true,
-  "version": "1.0.14",
+  "version": "1.0.15",
   "dependencies": {
     "express": "^4.16.4",
     "jstransformer-nunjucks": "^0.5.0",
