@@ -176,6 +176,7 @@ var app = {
         media.init(function onMic(issue, mediaStream){
             if(issue){app.issue(issue);}
             else if(mediaStream){
+                app.discription.innerHTML = "Waiting for potential connections... ";
                 ws.init(function(){ // ws.init will have likely already been called to get status, connections can timeout in 2 minutes, needing a second init
                     var token = ''; var type = ''; var link = '';
                     if(lobby.name === MAIN_LOBBY_NAME){
