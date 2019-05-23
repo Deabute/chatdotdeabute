@@ -334,7 +334,7 @@ var deabute = {
     onLogin: function(req){
         if(req.token && req.oid){
             localStorage.oid = req.oid;
-            localStorage.username = deabute.username.value;
+            localStorage.username = req.username;
             localStorage.token = req.token;
             localStorage.paid = req.paid;
             deabute.onUser(lobby.mine, lobby.name, localStorage.username);
