@@ -58,12 +58,12 @@ var serviceTime = {
                 serviceTime.closed(serviceTime.begin.getTime() - timeNow);  // reflect millis begining in future
             } else {serviceTime.open();}
         }
-        serviceTime.box.innerHTML = serviceTime.begin.toLocaleString();  // display true begin time
+        serviceTime.box.innerHTML = serviceTime.begin.toLocaleString();     // display true begin time
     },
     open: function(){
-        serviceTime.begin.setHours(HOUR_OF_DAY, 0);             // set back to true begin time, always on hour
+        serviceTime.begin.setHours(HOUR_OF_DAY, 0);                         // set back to true begin time, always on hour
         serviceTime.test();
-        app.proposition(); // ask about name and microphone to start getting set up
+        app.proposition('Matching about to occur for this channel');        // ask about name and microphone to start getting set up
     },
     onWSConnect: function(){
         serviceTime.testOnConnect();
@@ -122,8 +122,8 @@ var lobby = {
         inLobby();
     },
     visitor: function(req){
-        app.discription.innerHTML = lobby.name + ' is ' + req.status;
-        if(req.status === 'ready'){app.proposition();}
+        if(req.status === 'ready'){app.proposition(lobby.name + ' is ' + req.status);}
+        else{app.discription.innerHTML = lobby.name + ' is ' + req.status;}
     },
     status: function(req){
         if(req.exist){
@@ -131,8 +131,7 @@ var lobby = {
                 if(req.owner){lobby.mine = true;}
                 deabute.onUser(lobby.mine, lobby.name, localStorage.username);
                 if(lobby.mine){ // probably need to use a token to confirm this at one point
-                    app.discription.innerHTML = 'Indicating you are availible in this room';
-                    app.proposition();
+                    app.proposition('Indicating you are availible in this room');
                 } else {lobby.visitor(req);}
             } else {lobby.visitor(req);}
         } else {app.discription.innerHTML = 'Sorry, not much is here. Aside from this text';}
@@ -154,12 +153,12 @@ var app = {
         app.setupInput.hidden = true;
         app.discription.innerHTML = 'Please wait till our next scheduled matching to participate';
     },
-    proposition: function(){
+    proposition: function(welcomeMsg){
         app.setupButton.hidden = false;
         app.setupInput.hidden = false;
         if(localStorage.username !== 'Anonymous'){
             app.setupButton.innerHTML = 'Allow microphone';
-            app.discription.innerHTML = 'Welcome back ' + localStorage.username;
+            app.discription.innerHTML = welcomeMsg; // 'Welcome back ' + localStorage.username;
             app.setupInput.value = localStorage.username;
         } else { app.setupButton.innerHTML = 'Enter name, allow microphone'; }
     },
@@ -292,6 +291,9 @@ var setup = { // methods that are interconnected and intertwined with dependanci
             console.log('sending answer to ' + oidFromOffer);
             ws.send({action: 'answer', oid: localStorage.oid, sdp: rtc.peer.localDescription, peerId: oidFromOffer, gwid: gwidOfPartner});
         };
+    },
+    pool: function(){
+        pool.onOwner = function(){app.proposition(lobby.name + ' is ready now');};
     }
 };
 
@@ -306,10 +308,12 @@ persistence.init(function onLocalRead(capible){
         lobby.init(function(channelName){
             if(channelName){
                 ws.init(function(){
-                    if(localStorage.token && localStorage.oid && localStorage.username){
+                    var statusMsg = {channel: channelName, oid: localStorage.oid};
+                    if(localStorage.token && localStorage.username){
                         deabute.status.innerHTML = '';
-                        ws.msg('status', {channel: channelName, token: localStorage.token, oid: localStorage.oid});
-                    } else {ws.msg('status', {channel: channelName});}
+                        statusMsg.token = localStorage.token;
+                    }
+                    ws.msg('status', statusMsg);
                 });
             } else {
                 pool.indicator.hidden = false;
@@ -322,3 +326,4 @@ persistence.init(function onLocalRead(capible){
 setup.rtc();
 setup.ws();
 setup.dataPeer();
+setup.pool();
