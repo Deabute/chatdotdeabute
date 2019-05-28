@@ -156,16 +156,15 @@ var app = {
     proposition: function(welcomeMsg){
         app.setupButton.hidden = false;
         app.setupInput.hidden = false;
+        app.discription.innerHTML = welcomeMsg; // 'Welcome back ' + localStorage.username;
         if(localStorage.username !== 'Anonymous'){
             app.setupButton.innerHTML = 'Allow microphone';
-            app.discription.innerHTML = welcomeMsg; // 'Welcome back ' + localStorage.username;
             app.setupInput.value = localStorage.username;
         } else { app.setupButton.innerHTML = 'Enter name, allow microphone'; }
     },
     issue: function(issue){
         console.log(issue);
-        app.discription.innerHTML = 'Sorry maybe, Unmute, remove restriction of microphone in address bar and try again, reload, or use chrome/firefox?';
-        app.setupButton.hidden = false;
+        app.proposition('Sorry maybe, Unmute, remove restriction of microphone in address bar and try again, reload, or use chrome/firefox?');
     },
     setup: function(){
         app.setupButton.hidden = true;
