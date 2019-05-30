@@ -33,22 +33,24 @@ var serviceTime = {
         }
     },
     closed: function(millisTill){
-        serviceTime.begin.setHours(HOUR_OF_DAY, 0);     // set back to true begin time, always on hour
+        serviceTime.begin.setUTCHours(HOUR_OF_DAY, 0);     // set back to true begin time, always on hour
         app.outsideService();
         app.timeouts = setTimeout(serviceTime.open, millisTill); // open in upcoming window
     },
-    outside: function(username){
+    outside: function(day, utcHour){
+        DAY_OF_WEEK = day ? day : DAY_OF_WEEK;
+        HOUR_OF_DAY = utcHour ? utcHour : HOUR_OF_DAY;
         serviceTime.sessionInd.hidden = false;
-        serviceTime.test();
+        // serviceTime.test();
         var dayNow = serviceTime.begin.getDay();
         var dateNow = serviceTime.begin.getDate();
         var timeNow = serviceTime.begin.getTime();
         var endTime = new Date();
         serviceTime.begin.setDate(dateNow + (DAY_OF_WEEK - dayNow));
-        serviceTime.begin.setHours(HOUR_OF_DAY - 1, OPEN_MINUTE, 0, 0); // open window x minutes before actual begin
+        serviceTime.begin.setUTCHours(HOUR_OF_DAY - 1, OPEN_MINUTE, 0, 0); // open window x minutes before actual begin
         var millisBegin = serviceTime.begin.getTime();
         endTime.setDate(dateNow + (DAY_OF_WEEK - dayNow));
-        endTime.setHours(HOUR_OF_DAY + 1, 0, 0, 0);
+        endTime.setUTCHours(HOUR_OF_DAY + 1, 0, 0, 0);
         if(millisBegin > timeNow){                              // if begin is in future
             if(endTime.getTime(endTime.getDate() - 7) > timeNow){serviceTime.closed(millisBegin - timeNow);} // if last window ending is past, outside of window
             else{serviceTime.open();}
@@ -61,8 +63,8 @@ var serviceTime = {
         serviceTime.box.innerHTML = serviceTime.begin.toLocaleString();     // display true begin time
     },
     open: function(){
-        serviceTime.begin.setHours(HOUR_OF_DAY, 0);                         // set back to true begin time, always on hour
-        serviceTime.test();
+        serviceTime.begin.setUTCHours(HOUR_OF_DAY, 0);                         // set back to true begin time, always on hour
+        // serviceTime.test();
         app.proposition('Matching about to occur for this channel');        // ask about name and microphone to start getting set up
     },
     onWSConnect: function(){
@@ -104,36 +106,41 @@ var serviceTime = {
     }
 };
 
-var MAIN_LOBBY_NAME = 'Deabute';
-var lobby = {
-    name: MAIN_LOBBY_NAME,
+var MAIN_CHANNEL_NAME = 'Deabute';
+var channel = {
+    name: MAIN_CHANNEL_NAME,
     mine: false,
-    init: function(inLobby){
+    init: function(inchannel){
         var addressArray =  window.location.href.split('/');
         if(addressArray.length === 4){
             var route = addressArray[3];
             var regex = /^[a-z]+$/;                                         // make sure there are only lowercase a-z to the last letter
             if(regex.test(route)){
-                lobby.name = route;
-                inLobby(route);
+                channel.name = route;
+                inchannel(route);
                 return;
             }
         }
-        inLobby();
+        inchannel(channel.name);
     },
     visitor: function(req){
-        if(req.status === 'ready'){app.proposition(lobby.name + ' is ' + req.status);}
-        else{app.discription.innerHTML = lobby.name + ' is ' + req.status;}
+        if(req.status === 'ready'){app.proposition(channel.name + ' is ' + req.status);}
+        else{app.discription.innerHTML = channel.name + ' is ' + req.status;}
     },
     status: function(req){
         if(req.exist){
-            if(localStorage.token && localStorage.oid && localStorage.username){
-                if(req.owner){lobby.mine = true;}
-                deabute.onUser(lobby.mine, lobby.name, localStorage.username);
-                if(lobby.mine){ // probably need to use a token to confirm this at one point
-                    app.proposition('Indicating you are availible in this room');
-                } else {lobby.visitor(req);}
-            } else {lobby.visitor(req);}
+            if(req.multi){
+                pool.indicator.hidden = false;
+                serviceTime.outside(req.day, req.utcHour);
+            } else {
+                if(localStorage.token && localStorage.oid && localStorage.username){
+                    if(req.owner){channel.mine = true;}
+                    deabute.onUser(channel.mine, channel.name, localStorage.username);
+                    if(channel.mine){ // probably need to use a token to confirm this at one point
+                        app.proposition('Allow microphone to broadcast status');
+                    } else {channel.visitor(req);}
+                } else {channel.visitor(req);}
+            }
         } else {app.discription.innerHTML = 'Sorry, not much is here. Aside from this text';}
     }
 };
@@ -177,11 +184,11 @@ var app = {
                 app.discription.innerHTML = "Waiting for potential connections... ";
                 ws.init(function(){ // ws.init will have likely already been called to get status, connections can timeout in 2 minutes, needing a second init
                     var token = ''; var type = ''; var link = '';
-                    if(lobby.name === MAIN_LOBBY_NAME){
+                    if(channel.name === MAIN_CHANNEL_NAME){
                         serviceTime.onWSConnect();
                     } else {
-                        if(lobby.mine){token = localStorage.token;} // this will already be determined by status call
-                        type = 'single'; link = lobby.name;
+                        if(channel.mine){token = localStorage.token;} // this will already be determined by status call
+                        type = 'single'; link = channel.name;
                         dataPeer.consent = function(peer){app.consent(peer);};
                     }
                     ws.send({action: 'connected', oid: localStorage.oid, type: type, link: link, owner: localStorage.paid === 'true' ? true : false, token: localStorage.token});
@@ -203,7 +210,7 @@ var app = {
         peer = peer ? peer : 'peer';
         dataPeer.clientReady = false;
         var greet = 'Are you ready to chat?';
-        if(lobby.mine){greet = peer + ' would like to talk with you?';}
+        if(channel.mine){greet = peer + ' would like to talk with you?';}
         app.discription.innerHTML = greet;
         app.connectButton.innerHTML = 'Ready to talk';
         app.connectButton.onclick = function oneClientReady(){
@@ -250,7 +257,7 @@ var setup = { // methods that are interconnected and intertwined with dependanci
         ws.on('signedup', deabute.onSignup);
         ws.on('reject', deabute.rejected);
         ws.on('fail', deabute.onFail);
-        ws.on('status', lobby.status);
+        ws.on('status', channel.status);
     },
     dataPeer: function(){
         dataPeer.on('disconnect', app.disconnect);
@@ -282,7 +289,7 @@ var setup = { // methods that are interconnected and intertwined with dependanci
         rtc.signalIce = function(){ws.send({action: 'ice', oid: localStorage.oid, candidates: rtc.candidates, gwid: rtc.connectionGwid});};
         rtc.offerSignal = function(){
             var type = ''; var link = '';
-            if(lobby.name !== MAIN_LOBBY_NAME){type = 'single'; link = lobby.name;}
+            if(channel.name !== MAIN_CHANNEL_NAME){type = 'single'; link = channel.name;}
             ws.send({action: 'offer', oid: localStorage.oid, sdp: rtc.peer.localDescription, type: type, link: link}); // send offer to connect
             console.log('making offer');
         };
@@ -292,7 +299,7 @@ var setup = { // methods that are interconnected and intertwined with dependanci
         };
     },
     pool: function(){
-        pool.onOwner = function(){app.proposition(lobby.name + ' is ready now');};
+        pool.onOwner = function(){app.proposition(channel.name + ' is ready now');};
     }
 };
 
@@ -304,8 +311,8 @@ persistence.init(function onLocalRead(capible){
             dataPeer.close();
             app.clearTimeouts();
         });
-        lobby.init(function(channelName){
-            if(channelName){
+        channel.init(function(channelName){
+            // if(channelName){
                 ws.init(function(){
                     var statusMsg = {channel: channelName, oid: localStorage.oid};
                     if(localStorage.token && localStorage.username){
@@ -314,10 +321,10 @@ persistence.init(function onLocalRead(capible){
                     }
                     ws.msg('status', statusMsg);
                 });
-            } else {
-                pool.indicator.hidden = false;
-                serviceTime.outside();
-            }
+            // } else {
+            //     pool.indicator.hidden = false;
+            //     serviceTime.outside();
+            // }
         });
     } else {app.discription.innerHTML = 'Incompatible browser';}
 });

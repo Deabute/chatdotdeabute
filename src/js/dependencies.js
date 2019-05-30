@@ -328,9 +328,9 @@ var deabute = {
             } else {deabute.status.innerHTML = 'Username must be lowercase letters';}
         } else {deabute.status.innerHTML = 'Missing information';}
     },
-    onUser: function(mine, lobbyname, username){
-        if(mine){deabute.status.innerHTML = 'Hey ' + username + '! Welcome to your lobby';}
-        else    {deabute.status.innerHTML = 'Hey ' + username + '! Welcome to ' + lobbyname + '\'s lobby';}
+    onUser: function(mine, channelname, username){
+        if(mine){deabute.status.innerHTML = 'Hey ' + username + '! Welcome to your channel';}
+        else    {deabute.status.innerHTML = 'Hey ' + username + '! Welcome to ' + channelname + '\'s channel';}
         deabute.status.hidden = false;
     },
     onLogin: function(req){
@@ -339,11 +339,11 @@ var deabute = {
             localStorage.username = req.username;
             localStorage.token = req.token;
             localStorage.paid = req.paid;
-            deabute.onUser(lobby.mine, lobby.name, localStorage.username);
+            deabute.onUser(channel.mine, channel.name, localStorage.username);
         } else {deabute.status.innerHTML = 'Opps something when wrong';}
     },
     onSignup: function(req){
-        deabute.onUser(lobby.mine, lobby.name, deabute.username.value);
+        deabute.onUser(channel.mine, channel.name, deabute.username.value);
         deabute.credBox.hidden = true;
     },
     rejected: function(req){
