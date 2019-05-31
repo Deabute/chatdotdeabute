@@ -106,9 +106,9 @@ var serviceTime = {
     }
 };
 
-var MAIN_CHANNEL_NAME = 'Deabute';
+var DEFAULT_CHANNEL_NAME = 'Deabute';
 var channel = {
-    name: MAIN_CHANNEL_NAME,
+    name: DEFAULT_CHANNEL_NAME,
     mine: false,
     init: function(inchannel){
         var addressArray =  window.location.href.split('/');
@@ -184,7 +184,7 @@ var app = {
                 app.discription.innerHTML = "Waiting for potential connections... ";
                 ws.init(function(){ // ws.init will have likely already been called to get status, connections can timeout in 2 minutes, needing a second init
                     var token = ''; var type = ''; var link = '';
-                    if(channel.name === MAIN_CHANNEL_NAME){
+                    if(channel.name === DEFAULT_CHANNEL_NAME){
                         serviceTime.onWSConnect();
                     } else {
                         if(channel.mine){token = localStorage.token;} // this will already be determined by status call
@@ -198,8 +198,8 @@ var app = {
     },
     disconnect: function(human){
         media.switchAudio(false);
-        prompt.create(prompt.nps, function whenAnswered(){ // closes rtc connection, order important
-            ws.repool();
+        prompt.create(prompt.review, function whenAnswered(answer){ // closes rtc connection, order important
+            ws.repool(answer);
             app.consent();
         });
         dataPeer.disconnect(human); // NOTE closing connetion will remove id that was passed to prompt
@@ -289,7 +289,7 @@ var setup = { // methods that are interconnected and intertwined with dependanci
         rtc.signalIce = function(){ws.send({action: 'ice', oid: localStorage.oid, candidates: rtc.candidates, gwid: rtc.connectionGwid});};
         rtc.offerSignal = function(){
             var type = ''; var link = '';
-            if(channel.name !== MAIN_CHANNEL_NAME){type = 'single'; link = channel.name;}
+            if(channel.name !== DEFAULT_CHANNEL_NAME){type = 'single'; link = channel.name;}
             ws.send({action: 'offer', oid: localStorage.oid, sdp: rtc.peer.localDescription, type: type, link: link}); // send offer to connect
             console.log('making offer');
         };

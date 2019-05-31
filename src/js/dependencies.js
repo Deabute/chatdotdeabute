@@ -183,6 +183,17 @@ var prompt = {
         question: 'How did it go? If you knew them better, or you do know them, would you introduce them to another friend?',
         answers: ['definitely not', 'no', 'meh', 'yes', 'definitely']
     },
+    review: {
+        id: 'review',
+        question: 'How did the conversation go?',
+        answers: ['There was a general app issue',
+            'There was a signal issue, could only clearly hear one or neither side',
+            'other person was difficult to talk to',
+            'Conversation was "okay"',
+            'worked well, conversation was good',
+            'That was great, would talk to someone like that again'
+        ]
+    },
     answers: document.getElementById('formAnswers'),
     create: function(questionObj, onAnswer){
         prompt.form.hidden = false;
@@ -203,28 +214,31 @@ var prompt = {
             event.preventDefault();
             var radios = document.getElementsByName('answer');
             var unifiedIndex = 4 - halfway; // determines relitive start value from universal middle value
-            for(var entry = 0; entry < radios.length; entry++){                   // for all posible current question answers
-                if(radios[entry].checked){                                        // find checked entry
-                    for(var peer = 0; peer < persistence.answers.length; peer++){ // for existing user answer entries
-                        if(persistence.answers[peer].oid === rtc.lastPeer){       // if an existing entry matches this peer
-                            persistence.answers[peer].nps = unifiedIndex;         // add property to entry
-                            prompt.onSubmit(onAnswer); return;                    // save and end function
+            for(var entry = 0; entry < radios.length; entry++){                     // for all posible current question answers
+                if(radios[entry].checked){                                          // find checked entry
+                    var answer = {oid: rtc.lastPeer, score: unifiedIndex + entry, id: questionObj.id};
+                    for(var peer = 0; peer < persistence.answers.length; peer++){   // for existing user answer entries
+                        if(persistence.answers[peer].oid === rtc.lastPeer && persistence.answers.id === questionObj.id){   // overwrite existing entries
+                            persistence.answers[peer].score = unifiedIndex + entry; // add property to entry
+                            persistence.answers[peer].id = questionObj.id;
+                            prompt.onSubmit(onAnswer, answer); return;                      // save and end function
                         }
                     }
-                    persistence.answers.push({oid: rtc.lastPeer, nps: unifiedIndex}); // if peer not found push as new entry
-                    prompt.onSubmit(onAnswer); return;                                // save and end function
+
+                    persistence.answers.push(answer); // if peer not found push as new entry
+                    prompt.onSubmit(onAnswer, answer); return;                                // save and end function
                 }
                 unifiedIndex++; // count up from relitive start value. relitive to universal middle value (4)
             }
         }, false);
     },
-    onSubmit: function(whenDone){
+    onSubmit: function(whenDone, answer){
         localStorage.answers = JSON.stringify(persistence.answers); // save any recorded answer
         prompt.caller = false;
         prompt.answers.innerHTML = '';
         prompt.form.hidden = true;
         prompt.feild.innerHTML = '';
-        whenDone();
+        whenDone(answer);
     }
 };
 
@@ -273,8 +287,11 @@ var ws = {
         if(ws.active){ws.send({action:'reduce', oid: localStorage.oid, pause: pause, owner: localStorage.paid === 'true' ? true : false, token: localStorage.token});}
         ws.active = false;
     },
-    repool: function(){
-        if(!ws.active){ws.send({action: 'repool', oid: localStorage.oid, owner: localStorage.paid === 'true' ? true : false, token: localStorage.token});} // let server know we can be rematched
+    repool: function(answer){
+        if(!ws.active){
+            var msg = {oid: localStorage.oid, owner: localStorage.paid === 'true' ? true : false, token: localStorage.token, answer: answer};
+            ws.msg('repool', msg);
+        } // let server know we can be rematched
         ws.active = true;
     },
     handlers: [{action: 'msg', func: function(req){console.log(req.msg);}}],
