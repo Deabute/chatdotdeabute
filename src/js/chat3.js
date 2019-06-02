@@ -15,14 +15,6 @@ var serviceTime = {
     box: document.getElementById('timebox'),
     WINDOW: document.getElementById('serviceWindow').innerHTML,
     sessionInd: document.getElementById('sessionInd'),
-    test: function(){
-        if(serviceTime.WINDOW === 't'){
-            var date = new Date();
-            DAY_OF_WEEK = date.getDay();
-            HOUR_OF_DAY = date.getHours() + 1;
-            OPEN_MINUTE = 0;
-        }
-    },
     testOnConnect: function(){
         if(serviceTime.WINDOW === 't'){
             var date = new Date();
@@ -41,7 +33,6 @@ var serviceTime = {
         DAY_OF_WEEK = typeof day === 'undefined' ? DAY_OF_WEEK : day;
         HOUR_OF_DAY = typeof utcHour === 'undefined' ?  HOUR_OF_DAY: utcHour;
         serviceTime.sessionInd.hidden = false;
-        // serviceTime.test();
         var dayNow = serviceTime.begin.getDay();
         var dateNow = serviceTime.begin.getDate();
         var timeNow = serviceTime.begin.getTime();
@@ -64,11 +55,10 @@ var serviceTime = {
     },
     open: function(){
         serviceTime.begin.setUTCHours(HOUR_OF_DAY, 0);                         // set back to true begin time, always on hour
-        // serviceTime.test();
         app.proposition('Matching about to occur for this channel');        // ask about name and microphone to start getting set up
     },
     onWSConnect: function(){
-        serviceTime.testOnConnect();
+        // serviceTime.testOnConnect();
         app.waiting();
         currentTime = new Date().getTime();
         var startTime = serviceTime.begin.getTime();
