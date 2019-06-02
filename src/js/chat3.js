@@ -38,8 +38,8 @@ var serviceTime = {
         app.timeouts = setTimeout(serviceTime.open, millisTill); // open in upcoming window
     },
     outside: function(day, utcHour){
-        DAY_OF_WEEK = day ? day : DAY_OF_WEEK;
-        HOUR_OF_DAY = utcHour ? utcHour : HOUR_OF_DAY;
+        DAY_OF_WEEK = typeof day === 'undefined' ? DAY_OF_WEEK : day;
+        HOUR_OF_DAY = typeof utcHour === 'undefined' ?  HOUR_OF_DAY: utcHour;
         serviceTime.sessionInd.hidden = false;
         // serviceTime.test();
         var dayNow = serviceTime.begin.getDay();
