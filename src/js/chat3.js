@@ -150,6 +150,7 @@ var app = {
     setupButton: document.getElementById('setupButton'),
     connectButton: document.getElementById('connectButton'),
     discription: document.getElementById('discription'),
+    entered: false, // flags true when microphone is allowed
     timeouts: 0,
     clearTimeouts: function(){
         if(app.timeouts > 0){while(app.timeouts--){clearTimeout(app.timeouts + 1);}}
@@ -161,13 +162,15 @@ var app = {
         app.discription.innerHTML = 'Please wait till our next scheduled matching to participate';
     },
     proposition: function(welcomeMsg){
-        app.setupButton.hidden = false;
-        app.setupInput.hidden = false;
-        app.discription.innerHTML = welcomeMsg; // 'Welcome back ' + localStorage.username;
-        if(localStorage.username !== 'Anonymous'){
-            app.setupButton.innerHTML = 'Allow microphone';
-            app.setupInput.value = localStorage.username;
-        } else { app.setupButton.innerHTML = 'Enter name, allow microphone'; }
+        if(!app.entered){
+            app.setupButton.hidden = false;
+            app.setupInput.hidden = false;
+            app.discription.innerHTML = welcomeMsg;
+            if(localStorage.username !== 'Anonymous'){
+                app.setupButton.innerHTML = 'Allow microphone';
+                app.setupInput.value = localStorage.username;
+            } else { app.setupButton.innerHTML = 'Enter name, allow microphone'; }
+        }
     },
     issue: function(issue){
         console.log(issue);
@@ -191,6 +194,7 @@ var app = {
                         type = 'single'; link = channel.name;
                         dataPeer.consent = function(peer){app.consent(peer);};
                     }
+                    app.entered = true;
                     ws.send({action: 'connected', oid: localStorage.oid, type: type, link: link, owner: localStorage.paid === 'true' ? true : false, token: localStorage.token});
                 });
             } else {app.issue('No media stream present');}
