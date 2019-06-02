@@ -229,7 +229,6 @@ var prompt = {
                     persistence.answers.push(answer); // if peer not found push as new entry
                     prompt.onSubmit(onAnswer, answer); return;                                // save and end function
                 }
-                unifiedIndex++; // count up from relitive start value. relitive to universal middle value (4)
             }
         }, false);
     },
