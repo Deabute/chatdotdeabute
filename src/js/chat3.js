@@ -106,7 +106,7 @@ var serviceTime = {
     }
 };
 
-var DEFAULT_CHANNEL_NAME = 'Deabute';
+var DEFAULT_CHANNEL_NAME = 'deabute';
 var channel = {
     name: DEFAULT_CHANNEL_NAME,
     mine: false,
@@ -307,24 +307,20 @@ persistence.init(function onLocalRead(capible){
     if(capible){
         window.addEventListener("beforeunload", function(event){
             event.returnValue = '';
+            // TODO should do next two only when in app
             ws.msg('remove', {owner: localStorage.paid === 'true' ? true : false, token: localStorage.token, oid: localStorage.oid});
             dataPeer.close();
             app.clearTimeouts();
         });
         channel.init(function(channelName){
-            // if(channelName){
-                ws.init(function(){
-                    var statusMsg = {channel: channelName, oid: localStorage.oid};
-                    if(localStorage.token && localStorage.username){
-                        deabute.status.innerHTML = '';
-                        statusMsg.token = localStorage.token;
-                    }
-                    ws.msg('status', statusMsg);
-                });
-            // } else {
-            //     pool.indicator.hidden = false;
-            //     serviceTime.outside();
-            // }
+            ws.init(function(){
+                var statusMsg = {channel: channelName, oid: localStorage.oid};
+                if(localStorage.token && localStorage.username){
+                    deabute.status.innerHTML = '';
+                    statusMsg.token = localStorage.token;
+                }
+                ws.msg('status', statusMsg);
+            });
         });
     } else {app.discription.innerHTML = 'Incompatible browser';}
 });
