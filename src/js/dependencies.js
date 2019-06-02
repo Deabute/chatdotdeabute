@@ -188,15 +188,16 @@ var prompt = {
         question: 'How did the conversation go?',
         answers: ['There was a general app issue',
             'There was a signal issue, could only clearly hear one or neither side',
-            'other person was difficult to talk to',
+            'Other person was difficult to talk to',
             'Conversation was "okay"',
-            'worked well, conversation was good',
+            'Worked well, conversation was good',
             'That was great, would talk to someone like that again'
         ]
     },
     answers: document.getElementById('formAnswers'),
     create: function(questionObj, onAnswer){
-        prompt.form.hidden = false;
+        if(!prompt.form.hidden){return;} // prevent one prompt from being created on top of other by only creating prompt from shown form state
+        prompt.form.hidden = false;      // Show prompt form
         prompt.feild.innerHTML = questionObj.question;
         var answerBundle = document.createElement('div'); answerBundle.id = 'answerBundle';
         prompt.answers.appendChild(answerBundle);
