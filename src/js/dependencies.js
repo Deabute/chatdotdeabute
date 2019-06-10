@@ -1,6 +1,5 @@
 // dependencies.js ~ copyright 2019 ~ Paul Beaudet
 // Sigletons that form base of deabute services that have little to no interdependence
-var TIME_FOR_CONSENT = 30;
 var rtc = { // stun servers in config allow client to introspect a communication path to offer a remote peer
     config: {'iceServers': [ {'urls': 'stun:stun.stunprotocol.org:3478'}, {'urls': 'stun:stun.l.google.com:19302'} ]},
     peer: null,                                                 // placeholder for parent webRTC object instance

@@ -1,9 +1,10 @@
 // rtctest.js ~ copyright 2019 Paul Beaudet ~ MIT License
 // rtcSignal version - 1.0.28
 // This test requires at least two browser windows, to open a data connection between two peer
+var TIME_FOR_CONSENT = 30;
 var DAY_OF_WEEK = 3;
 var HOUR_OF_DAY = 15;
-var CONSENT_MINUTE = 11;
+var CONSENT_MINUTE = 58;
 var OPEN_MINUTE = CONSENT_MINUTE - 10;
 var CONFLUENCE_MINUTE = CONSENT_MINUTE;
 var CONSENT_SECOND = 3600 - (CONSENT_MINUTE * 60 + TIME_FOR_CONSENT);
@@ -15,15 +16,6 @@ var serviceTime = {
     box: document.getElementById('timebox'),
     WINDOW: document.getElementById('serviceWindow').innerHTML,
     sessionInd: document.getElementById('sessionInd'),
-    testOnConnect: function(){
-        if(serviceTime.WINDOW === 't'){
-            var date = new Date();
-            CONSENT_MINUTE = date.getMinutes();
-            CONFLUENCE_MINUTE = CONSENT_MINUTE;
-            CONSENT_SECOND = 3600 - (CONSENT_MINUTE * 60 + TIME_FOR_CONSENT);
-            CONFLUENCE_SECOND = 3600 - (CONFLUENCE_MINUTE * 60 + 50);
-        }
-    },
     closed: function(millisTill){
         serviceTime.begin.setUTCHours(HOUR_OF_DAY, 0);     // set back to true begin time, always on hour
         app.outsideService();
@@ -54,11 +46,10 @@ var serviceTime = {
         serviceTime.box.innerHTML = serviceTime.begin.toLocaleString();     // display true begin time
     },
     open: function(){
-        serviceTime.begin.setUTCHours(HOUR_OF_DAY, 0);                         // set back to true begin time, always on hour
+        serviceTime.begin.setUTCHours(HOUR_OF_DAY, 0);                      // set back to true begin time, always on hour
         app.proposition('Matching about to occur for this channel');        // ask about name and microphone to start getting set up
     },
     onWSConnect: function(){
-        // serviceTime.testOnConnect();
         app.waiting();
         currentTime = new Date().getTime();
         var startTime = serviceTime.begin.getTime();
@@ -100,6 +91,7 @@ var DEFAULT_CHANNEL_NAME = 'deabute';
 var channel = {
     name: DEFAULT_CHANNEL_NAME,
     mine: false,
+    multi: true,
     init: function(inchannel){
         var addressArray =  window.location.href.split('/');
         if(addressArray.length === 4){
@@ -120,9 +112,11 @@ var channel = {
     status: function(req){
         if(req.exist){
             if(req.multi){
+                channel.multi = true;
                 pool.indicator.hidden = false;
                 serviceTime.outside(req.day, req.utcHour);
             } else {
+                channel.multi = false;
                 if(localStorage.token && localStorage.oid && localStorage.username){
                     if(req.owner){channel.mine = true;}
                     deabute.onUser(channel.mine, channel.name, localStorage.username);
@@ -177,7 +171,7 @@ var app = {
                 app.discription.innerHTML = "Waiting for potential connections... ";
                 ws.init(function(){ // ws.init will have likely already been called to get status, connections can timeout in 2 minutes, needing a second init
                     var token = ''; var type = ''; var link = '';
-                    if(channel.name === DEFAULT_CHANNEL_NAME){
+                    if(channel.multi){
                         serviceTime.onWSConnect();
                     } else {
                         if(channel.mine){token = localStorage.token;} // this will already be determined by status call
