@@ -61,18 +61,18 @@ var serviceTime = {
                 firstTimeout = diff % 1000;
             }
             if(serviceTime.countDown < CONSENT_SECOND){       // time to consent has passed
-                // app.consent();                                // given we past concent second
+                app.triggerConsent();                         // trigger concent dialog if connected to peer
                 serviceTime.countDown = TIME_FOR_CONSENT - 1; // give time for someone to actually consent before confluence
             }
             app.timeouts = setTimeout(serviceTime.downCount, firstTimeout);
-        } else { serviceTime.box.innerHTML = 'Currently matching users'; }
+        } else {serviceTime.box.innerHTML = 'Currently matching users';}
     },
     downCount: function(){
         app.timeouts = setTimeout(function nextSecond(){
             if(serviceTime.countDown){
                 serviceTime.box.innerHTML = Math.floor(serviceTime.countDown / 60) + ' minutes and ' + serviceTime.countDown % 60 + ' seconds remaining';
                 serviceTime.countDown--;
-                if(serviceTime.countDown === CONSENT_SECOND)        {app.consent();}
+                if(serviceTime.countDown === CONSENT_SECOND)        {app.triggerConsent();}
                 else if(serviceTime.countDown === CONFLUENCE_SECOND){dataPeer.onConfluence();}
                 serviceTime.downCount();
             } else {
@@ -193,9 +193,17 @@ var app = {
         app.discription.innerHTML = '';
         app.connectButton.hidden = true;
     },
+    triggerConsent: function(){},
     consent: function(peer){
         peer = peer ? peer : 'peer';
         dataPeer.clientReady = false;
+        if(serviceTime.countDown >= CONSENT_SECOND){
+            app.triggerConsent = function(){
+                app.consent(peer);
+                app.triggerConsent = function(){};            // reset trigger to an empty funtion
+            };
+            return; // given serviceTime is in countdown wait until it triggers consent
+        }
         var greet = 'Are you ready to chat?';
         if(channel.mine){greet = peer + ' would like to talk with you?';}
         app.discription.innerHTML = greet;
