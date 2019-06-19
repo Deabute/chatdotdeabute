@@ -61,14 +61,11 @@ var serviceTime = {
                 firstTimeout = diff % 1000;
             }
             if(serviceTime.countDown < CONSENT_SECOND){       // time to consent has passed
-                app.consent();                                // given we past concent second
+                // app.consent();                                // given we past concent second
                 serviceTime.countDown = TIME_FOR_CONSENT - 1; // give time for someone to actually consent before confluence
             }
             app.timeouts = setTimeout(serviceTime.downCount, firstTimeout);
-        } else {
-            app.consent();
-            serviceTime.box.innerHTML = 'Currently matching users';
-        }
+        } else { serviceTime.box.innerHTML = 'Currently matching users'; }
     },
     downCount: function(){
         app.timeouts = setTimeout(function nextSecond(){
@@ -91,6 +88,7 @@ var DEFAULT_CHANNEL_NAME = 'deabute';
 var channel = {
     name: DEFAULT_CHANNEL_NAME,
     mine: false,
+    type: 'multi',
     multi: true,
     init: function(inchannel){
         var addressArray =  window.location.href.split('/');
@@ -170,16 +168,17 @@ var app = {
             else if(mediaStream){
                 app.discription.innerHTML = "Waiting for potential connections... ";
                 ws.init(function(){ // ws.init will have likely already been called to get status, connections can timeout in 2 minutes, needing a second init
-                    var token = ''; var type = ''; var link = '';
+                    var token = '';
                     if(channel.multi){
+                        channel.type = 'multi';
                         serviceTime.onWSConnect();
                     } else {
+                        channel.type = 'single';
                         if(channel.mine){token = localStorage.token;} // this will already be determined by status call
-                        type = 'single'; link = channel.name;
-                        dataPeer.consent = function(peer){app.consent(peer);};
                     }
+                    dataPeer.consent = function(peer){app.consent(peer);};
                     app.entered = true;
-                    ws.send({action: 'connected', oid: localStorage.oid, type: type, link: link, owner: localStorage.paid === 'true' ? true : false, token: localStorage.token});
+                    ws.send({action: 'connected', oid: localStorage.oid, type: channel.type, link: channel.name, owner: localStorage.paid === 'true' ? true : false, token: localStorage.token});
                 });
             } else {app.issue('No media stream present');}
         });
@@ -188,7 +187,7 @@ var app = {
         media.switchAudio(false);
         prompt.create(prompt.review, function whenAnswered(answer){ // closes rtc connection, order important
             ws.repool(answer);
-            app.consent();
+            app.discription.innerHTML = "Waiting for potential connections... ";
         });
         dataPeer.disconnect(human); // NOTE closing connetion will remove id that was passed to prompt
         app.discription.innerHTML = '';
@@ -276,9 +275,7 @@ var setup = { // methods that are interconnected and intertwined with dependanci
     rtc: function(){
         rtc.signalIce = function(){ws.send({action: 'ice', oid: localStorage.oid, candidates: rtc.candidates, gwid: rtc.connectionGwid});};
         rtc.offerSignal = function(){
-            var type = ''; var link = '';
-            if(channel.name !== DEFAULT_CHANNEL_NAME){type = 'single'; link = channel.name;}
-            ws.send({action: 'offer', oid: localStorage.oid, sdp: rtc.peer.localDescription, type: type, link: link}); // send offer to connect
+            ws.send({action: 'offer', oid: localStorage.oid, sdp: rtc.peer.localDescription, type: channel.type, link: channel.name}); // send offer to connect
             console.log('making offer');
         };
         rtc.answerSignal = function(oidFromOffer, gwidOfPartner){

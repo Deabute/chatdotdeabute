@@ -288,7 +288,7 @@ var ws = {
     },
     repool: function(answer){
         if(!ws.active){
-            var msg = {oid: localStorage.oid, owner: localStorage.paid === 'true' ? true : false, token: localStorage.token, answer: answer};
+            var msg = {oid: localStorage.oid, owner: localStorage.paid === 'true' ? true : false, token: localStorage.token, answer: answer, type: channel.type, link: channel.name};
             ws.msg('repool', msg);
         } // let server know we can be rematched
         ws.active = true;
