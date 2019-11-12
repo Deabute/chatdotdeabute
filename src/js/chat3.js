@@ -2,8 +2,8 @@
 // rtcSignal version - 1.0.28
 // This test requires at least two browser windows, to open a data connection between two peer
 var TIME_FOR_CONSENT = 30;
-var DAY_OF_WEEK = 3;
-var HOUR_OF_DAY = 15;
+var DAY_OF_WEEK = 1;
+var HOUR_OF_DAY = 12;
 var CONSENT_MINUTE = 58;
 var OPEN_MINUTE = CONSENT_MINUTE - 10;
 var CONFLUENCE_MINUTE = CONSENT_MINUTE;
