@@ -6,8 +6,8 @@ var layouts     = require('metalsmith-layouts');
 
 Metalsmith(__dirname)
   .metadata({
-      title: "Hiking Buddies",
-      description: "A place to find hiking partners",
+      title: "Deabute Chat",
+      description: "A place to talk one on one over mutual interest",
       url: process.env.SITE_URL,
       socketserver: process.env.SOCKET_SERVER,
       accountserver: process.env.ACCOUNT_SERVER,
