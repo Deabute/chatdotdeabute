@@ -3,12 +3,17 @@
   "private": true,
   "version": "1.0.30",
   "dependencies": {
+    "aws-sdk": "^2.730.0",
+    "bcryptjs": "^2.4.3",
     "express": "^4.16.4",
+    "js-yaml": "^3.14.0",
     "jstransformer-nunjucks": "^0.5.0",
     "metalsmith": "^2.3.0",
     "metalsmith-in-place": "^4.2.0",
     "metalsmith-layouts": "^2.3.0",
-    "metalsmith-markdown": "^1.2.0",
-    "metalsmith-permalinks": "^2.2.0"
+    "metalsmith-markdown": "^1.3.0",
+    "metalsmith-permalinks": "^2.2.0",
+    "mongodb": "^3.6.0",
+    "ws": "^7.3.1"
   }
 }
