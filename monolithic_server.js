@@ -103,13 +103,6 @@ module.exports = function serve() {
     const web_server = app.listen(process.env.PORT)
     socket.init(web_server); // set up socket server and related event handlers
     serverless.read(serverless.forFunctions(socket.on))
-
-
-    // web_server.on('upgrade', (request, socket, head) => {
-    //     socket.server.handleUpgrade(request, socket, head, socket => {
-    //         socket.server.emit('connection', socket, request)
-    //     })
-    // })
 }
 
 if (!module.parent) { serve() } // run server if called stand alone

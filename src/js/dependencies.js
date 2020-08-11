@@ -1,5 +1,5 @@
 // dependencies.js ~ copyright 2019 ~ Paul Beaudet
-// Sigletons that form base of deabute services that have little to no interdependence
+// Singletons that form base of deabute services that have little to no interdependence
 var rtc = { // stun servers in config allow client to introspect a communication path to offer a remote peer
     config: { 'iceServers': [{ 'urls': 'stun:stun.stunprotocol.org:3478' }, { 'urls': 'stun:stun.l.google.com:19302' }] },
     peer: null,                                                 // placeholder for parent webRTC object instance
@@ -76,7 +76,7 @@ var dataPeer = {
         dataPeer.peerName = '';
     },
     newChannel: function (event) {
-        receiveChannel = event.channel;                      // recieve channel events handlers created on connection
+        receiveChannel = event.channel;                      // receive channel events handlers created on connection
         dataPeer.on('terminate', dataPeer.close);
         dataPeer.on('ready', dataPeer.whenReady);
         dataPeer.on('connect', function (req) {
@@ -90,7 +90,7 @@ var dataPeer = {
     handlers: [{ action: 'msg', func: function (req) { console.log(req.msg); } },],
     on: function (action, func) { dataPeer.handlers.push({ action: action, func: func }); },
     incoming: function (event) {                              // handle incoming rtc messages
-        var req = { action: null };                             // request defualt
+        var req = { action: null };                             // request default
         try { req = JSON.parse(event.data); } catch (error) { }   // probably should be wrapped in error handler
         for (var h = 0; h < dataPeer.handlers.length; h++) {
             if (req.action === dataPeer.handlers[h].action) {
@@ -127,10 +127,10 @@ var dataPeer = {
     },
     onConfluence: function () {       // happens at confluence time
         if (!dataPeer.talking) {      // given conversation is a dud
-            if (dataPeer.peerName) { dataPeer.send({ action: 'terminate' }); } // this needs more explaination
+            if (dataPeer.peerName) { dataPeer.send({ action: 'terminate' }); } // this needs more explanation
             if (dataPeer.clientReady) { dataPeer.setReconsentActive(); }   // active client doesn't know, but may need to be gauged for attention if takes too long
             else { dataPeer.inactiveOnConfluence(); } // this client is eating pie or doing something other than paying attention
-            dataPeer.close();                                          // connection closes in this case so canidates can move on
+            dataPeer.close();                                          // connection closes in this case so candidates can move on
         }
     }
 };
