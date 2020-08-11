@@ -1,0 +1,110 @@
+service: signals
+
+provider:
+    name: aws
+    stage: dev
+    runtime: nodejs10.x
+    region: us-east-1
+    timeout: 4
+    memorySize: 256
+    environment:
+        MONGODB_URI: ${env:MONGODB_URI}
+        DB_NAME: ${env:DB_NAME}
+    iamRoleStatements:
+      - Effect: Allow
+        Action:
+          - "execute-api:ManageConnections"
+        Resource:
+          - "arn:aws:execute-api:*:*:**/@connections/*"
+
+functions:
+    connect:
+        discription: "adds connected users to db"
+        handler: src/lambda/gateway.connect
+        events:
+          - websocket:
+              route: $connect
+    disconnect:
+        discription: "removes disconneced users from db"
+        handler: src/lambda/gateway.disconnect
+        events:
+          - websocket:
+              route: $disconnect
+    default:
+        discription: "handles unhandled routes"
+        handler: src/lambda/gateway.default
+        events:
+          - websocket:
+              route: $default
+    ice:
+        discription: "Trade connection info among peers"
+        handler: src/lambda/rtc.ice
+        events:
+          - websocket:
+              route: ice
+    offer:
+        discription: "offer discriptions of connection compatibility among peers"
+        handler: src/lambda/rtc.offer
+        events:
+          - websocket:
+              route: offer
+    answer:
+        discription: "recieve connection compatibility information"
+        handler: src/lambda/rtc.answer
+        events:
+          - websocket:
+              route: answer
+    repool:
+        discription: "add users into connection pool"
+        handler: src/lambda/rtc.repool
+        events:
+          - websocket:
+              route: repool
+    connected:
+        discription: "also add users into connection pool"
+        handler: src/lambda/rtc.connected
+        events:
+          - websocket:
+              route: connected
+    reduce:
+        discription: "Reduces users from connection pool"
+        handler: src/lambda/rtc.reduce
+        events:
+          - websocket:
+              route: reduce
+    pause:
+        discription: "state between unconnected and able to connect"
+        handler: src/lambda/rtc.pause
+        events:
+          - websocket:
+              route: pause
+    unmatched:
+        discription: "ready to be connected with another peer"
+        handler: src/lambda/rtc.unmatched
+        events:
+          - websocket:
+              route: unmatched
+    remove:
+        discription: "removes users from activily matching list"
+        handler: src/lambda/rtc.remove
+        events:
+          - websocket:
+              route: remove
+    login:
+        discription: "authenticate user logins"
+        handler: src/lambda/user.login
+        events:
+          - websocket:
+              route: login
+    signup:
+        discription: "register users"
+        handler: src/lambda/user.signup
+        events:
+          - websocket:
+              route: signup
+    status:
+        discription: "get user status on links"
+        handler: src/lambda/user.status
+        events:
+          - websocket:
+              route: status
