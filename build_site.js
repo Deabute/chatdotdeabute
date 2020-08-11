@@ -10,7 +10,7 @@ Metalsmith(__dirname)
     description: "A place to talk one on one over mutual interest",
     url: process.env.SITE_URL,
     socketserver: process.env.SOCKET_SERVER,
-    accountserver: process.env.ACCOUNT_SERVER,
+    accountServer: process.env.ACCOUNT_SERVER,
     testing: process.env.TESTING,
   })
   .source('./src')

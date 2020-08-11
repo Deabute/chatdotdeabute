@@ -7,8 +7,8 @@ var rtc = { // stun servers in config allow client to introspect a communication
     lastPeer: '',
     connectionGwid: '',
     candidates: [],
-    onIce: function (event) {  // on address info being introspected (after local discription is set)
-        if (event.candidate) { // canididate property denotes data as multiple candidates can resolve
+    onIce: function (event) {  // on address info being introspected (after local description is set)
+        if (event.candidate) { // candidate property denotes data as multiple candidates can resolve
             rtc.candidates.push(event.candidate);
         } else {
             if (rtc.connectionGwid) {
@@ -17,21 +17,21 @@ var rtc = { // stun servers in config allow client to introspect a communication
             } else { setTimeout(function () { rtc.onIce(event); }, 50); }
         }
     }, // Note that sdp is going to be negotiated first regardless of any media being involved. its faster to resolve, maybe?
-    recieveIce: function (req) {
+    receiveIce: function (req) {
         console.log('getting ice from host');
         for (var i = 0; i < req.candidates.length; i++) { rtc.peer.addIceCandidate(req.candidates[i]); }
     },
-    init: function (onSetupCB, stream) {                                  // varify mediastream before calling
+    init: function (onSetupCB, stream) {                                  // verify media stream before calling
         rtc.peer = new RTCPeerConnection(rtc.config);           // create new instance for local client
         stream.getTracks().forEach(function (track) { rtc.peer.addTrack(track, stream); });
-        rtc.peer.ontrack = function (event) { document.getElementById('mediaStream').srcObject = event.streams[0]; }; // behavior upon reciving track
-        rtc.peer.onicecandidate = rtc.onIce;                    // Handle ice canidate at any random time they decide to come
-        onSetupCB();                                            // create and offer or answer depending on what intiated
+        rtc.peer.ontrack = function (event) { document.getElementById('mediaStream').srcObject = event.streams[0]; }; // behavior upon receiving track
+        rtc.peer.onicecandidate = rtc.onIce;                    // Handle ice candidate at any random time they decide to come
+        onSetupCB();                                            // create and offer or answer depending on what initiated
     },
     createDataChannel: function (onCreation) {
-        var datachannel = rtc.peer.createDataChannel('chat');
+        var dataChannel = rtc.peer.createDataChannel('chat');
         rtc.peer.ondatachannel = onCreation;           // creates data endpoints for remote peer on rtc connection
-        return datachannel;
+        return dataChannel;
     },
     createOffer: function () {                                    // extend offer to client so they can send it to remote
         rtc.peer.createOffer({ offerToReceiveAudio: 1, offerToReceiveVideo: 0 }).then(function onOffer(desc) {// get sdp data to show user & share w/ friend
@@ -43,7 +43,7 @@ var rtc = { // stun servers in config allow client to introspect a communication
         rtc.connectionId = oidFromOffer;
         rtc.connectionGwid = gwidOfPartner;
         rtc.peer.createAnswer().then(function onAnswer(answer) { // create answer to remote peer that offered
-            return rtc.peer.setLocalDescription(answer);        // set that offer as our local discripion
+            return rtc.peer.setLocalDescription(answer);        // set that offer as our local description
         }).then(function onOfferSetDesc() { rtc.answerSignal(oidFromOffer, gwidOfPartner); });
     },
     onAnswer: function (req) {
@@ -153,7 +153,7 @@ var pool = {
 
 var media = {
     stream: null,
-    init: function (onMedia) { // get user permistion to use media
+    init: function (onMedia) { // get user permission to use media
         var onMediaCallback = onMedia ? onMedia : function noSoupForYou() { };
         navigator.mediaDevices.getUserMedia({ audio: true, video: false }).then(function gotMedia(mediaStream) {
             console.log('got media');
@@ -176,7 +176,7 @@ var media = {
 
 var prompt = {
     caller: false,
-    feild: document.getElementById('promptFeild'),
+    field: document.getElementById('promptField'),
     form: document.getElementById('promptForm'),
     nps: {
         id: 'usernps',
@@ -198,7 +198,7 @@ var prompt = {
     create: function (questionObj, onAnswer) {
         if (!prompt.form.hidden) { return; } // prevent one prompt from being created on top of other by only creating prompt from shown form state
         prompt.form.hidden = false;      // Show prompt form
-        prompt.feild.innerHTML = questionObj.question;
+        prompt.field.innerHTML = questionObj.question;
         var answerBundle = document.createElement('div'); answerBundle.id = 'answerBundle';
         prompt.answers.appendChild(answerBundle);
         var halfway = Math.floor(questionObj.answers.length / 2); // figure middle answer index
@@ -214,8 +214,8 @@ var prompt = {
         prompt.form.addEventListener('submit', function submitAnswer(event) {
             event.preventDefault();
             var radios = document.getElementsByName('answer');
-            var unifiedIndex = 4 - halfway; // determines relitive start value from universal middle value
-            for (var entry = 0; entry < radios.length; entry++) {                     // for all posible current question answers
+            var unifiedIndex = 4 - halfway; // determines relative start value from universal middle value
+            for (var entry = 0; entry < radios.length; entry++) {                     // for all possible current question answers
                 if (radios[entry].checked) {                                          // find checked entry
                     var answer = { oid: rtc.lastPeer, score: unifiedIndex + entry, id: questionObj.id };
                     for (var peer = 0; peer < persistence.answers.length; peer++) {   // for existing user answer entries
@@ -237,7 +237,7 @@ var prompt = {
         prompt.caller = false;
         prompt.answers.innerHTML = '';
         prompt.form.hidden = true;
-        prompt.feild.innerHTML = '';
+        prompt.field.innerHTML = '';
         whenDone(answer);
     }
 };
@@ -305,7 +305,7 @@ var ws = {
                 return;
             }
         }
-        if (req.message === 'Internal server error') { console.log('Opps something when wrong: ' + JSON.stringify(req)); return; }
+        if (req.message === 'Internal server error') { console.log('Oops something when wrong: ' + JSON.stringify(req)); return; }
         console.log('no handler ' + event.data);
     },
     send: function (msg) {
@@ -345,9 +345,9 @@ var deabute = {
             } else { deabute.status.innerHTML = 'Username must be lowercase letters'; }
         } else { deabute.status.innerHTML = 'Missing information'; }
     },
-    onUser: function (mine, channelname, username) {
+    onUser: function (mine, channelName, username) {
         if (mine) { deabute.status.innerHTML = 'Hey ' + username + '! Welcome to your channel'; }
-        else { deabute.status.innerHTML = 'Hey ' + username + '! Welcome to ' + channelname + '\'s channel'; }
+        else { deabute.status.innerHTML = 'Hey ' + username + '! Welcome to ' + channelName + '\'s channel'; }
         deabute.status.hidden = false;
     },
     onLogin: function (req) {
@@ -357,7 +357,7 @@ var deabute = {
             localStorage.token = req.token;
             localStorage.paid = req.paid;
             deabute.onUser(channel.mine, channel.name, localStorage.username);
-        } else { deabute.status.innerHTML = 'Opps something when wrong'; }
+        } else { deabute.status.innerHTML = 'Oops something when wrong'; }
     },
     onSignup: function (req) {
         deabute.onUser(channel.mine, channel.name, deabute.username.value);

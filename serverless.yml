@@ -19,91 +19,91 @@ provider:
 
 functions:
     connect:
-        discription: "adds connected users to db"
+        description: "adds connected users to db"
         handler: src/lambda/gateway.connect
         events:
           - websocket:
               route: $connect
     disconnect:
-        discription: "removes disconneced users from db"
+        description: "removes disconnected users from db"
         handler: src/lambda/gateway.disconnect
         events:
           - websocket:
               route: $disconnect
     default:
-        discription: "handles unhandled routes"
+        description: "handles unhandled routes"
         handler: src/lambda/gateway.default
         events:
           - websocket:
               route: $default
     ice:
-        discription: "Trade connection info among peers"
+        description: "Trade connection info among peers"
         handler: src/lambda/rtc.ice
         events:
           - websocket:
               route: ice
     offer:
-        discription: "offer discriptions of connection compatibility among peers"
+        description: "offer descriptions of connection compatibility among peers"
         handler: src/lambda/rtc.offer
         events:
           - websocket:
               route: offer
     answer:
-        discription: "recieve connection compatibility information"
+        description: "receive connection compatibility information"
         handler: src/lambda/rtc.answer
         events:
           - websocket:
               route: answer
     repool:
-        discription: "add users into connection pool"
+        description: "add users into connection pool"
         handler: src/lambda/rtc.repool
         events:
           - websocket:
               route: repool
     connected:
-        discription: "also add users into connection pool"
+        description: "also add users into connection pool"
         handler: src/lambda/rtc.connected
         events:
           - websocket:
               route: connected
     reduce:
-        discription: "Reduces users from connection pool"
+        description: "Reduces users from connection pool"
         handler: src/lambda/rtc.reduce
         events:
           - websocket:
               route: reduce
     pause:
-        discription: "state between unconnected and able to connect"
+        description: "state between unconnected and able to connect"
         handler: src/lambda/rtc.pause
         events:
           - websocket:
               route: pause
     unmatched:
-        discription: "ready to be connected with another peer"
+        description: "ready to be connected with another peer"
         handler: src/lambda/rtc.unmatched
         events:
           - websocket:
               route: unmatched
     remove:
-        discription: "removes users from activily matching list"
+        description: "removes users from activity matching list"
         handler: src/lambda/rtc.remove
         events:
           - websocket:
               route: remove
     login:
-        discription: "authenticate user logins"
+        description: "authenticate user logins"
         handler: src/lambda/user.login
         events:
           - websocket:
               route: login
     signup:
-        discription: "register users"
+        description: "register users"
         handler: src/lambda/user.signup
         events:
           - websocket:
               route: signup
     status:
-        discription: "get user status on links"
+        description: "get user status on links"
         handler: src/lambda/user.status
         events:
           - websocket:

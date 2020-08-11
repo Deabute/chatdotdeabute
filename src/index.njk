@@ -3,8 +3,8 @@ layout: deabuteChat.njk
 title: Deabute Chat
 ---
 <span style="float:left" id="sessionInd" hidden>
-    <label for=timebox> Next Matching Session:</label>
-    <span name=timebox id="timebox">¯\_(ツ)_/¯</span>
+    <label for=timeBox> Next Matching Session:</label>
+    <span name=timeBox id="timeBox">¯\_(ツ)_/¯</span>
 </span>
 <br>
 <span style="float:left" id="poolInd" hidden>
@@ -13,9 +13,9 @@ title: Deabute Chat
 </span>
 <br>
 <br>
-<span id="discription" style="float:left">Welcome! This is an app that connects you with new people through voice</span>
+<span id="description" style="float:left">Welcome! This is an app that connects you with new people through voice</span>
 <form id="promptForm" hidden>
-    <p id="promptFeild"></p>
+    <p id="promptField"></p>
     <div id='formAnswers'></div>
     <button type="submit">Submit</button>
 </form>
@@ -24,4 +24,4 @@ title: Deabute Chat
 <button onclick="app.setup()" type="button" id='setupButton' hidden></button>
 <br>
 <button type="button" id='connectButton' hidden></button>
-<audio id="mediaStream" autoplay> unsuported </audio>
+<audio id="mediaStream" autoplay> unsupported </audio>

@@ -59,15 +59,15 @@ const socket = {
     incoming: function (event, sendFunc, connectionId) {                       // handle incoming socket messages
         let req = { action: null }
         try { req = JSON.parse(event) } catch (error) { console.log(error) } // if error we don't care there is a default object
-        function apiGWcallback(firstArg, secondArg) { console.log(JSON.stringify(secondArg)) }
+        function apiGWCallback(firstArg, secondArg) { console.log(JSON.stringify(secondArg)) }
         for (var h = 0; h < socket.handlers.length; h++) {
             if (req.action === socket.handlers[h].action) {
-                apiGWevent = { body: event, deabute: { sendTo: socket.sendTo, response: sendFunc }, requestContext: { connectionId: connectionId } }
-                socket.handlers[h].func(apiGWevent, {}, apiGWcallback)
+                apiGWEvent = { body: event, deabute: { sendTo: socket.sendTo, response: sendFunc }, requestContext: { connectionId: connectionId } }
+                socket.handlers[h].func(apiGWEvent, {}, apiGWCallback)
                 return
             }
         }
-        if (req.message === 'Internal server error') { console.log('Opps something when wrong: ' + JSON.stringify(req)); return; }
+        if (req.message === 'Internal server error') { console.log('Oops something when wrong: ' + JSON.stringify(req)); return; }
         console.log('no handler ' + event);
     }
 }
