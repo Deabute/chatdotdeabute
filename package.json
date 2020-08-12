@@ -1,7 +1,7 @@
 {
   "name": "chatDotDeabute",
   "private": true,
-  "version": "1.0.31",
+  "version": "1.0.32",
   "dependencies": {
     "aws-sdk": "^2.730.0",
     "bcryptjs": "^2.4.3",
