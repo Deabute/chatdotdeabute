@@ -278,7 +278,7 @@ var ws = {
             ws.instance.onopen = function () {
                 ws.active = true;
                 ws.instance.onmessage = ws.incoming;
-                ws.onclose = function onSocketClose() { ws.instance = null; };
+                ws.instance.onclose = function onSocketClose() { ws.instance = null; };
                 if (onConnection) { onConnection(); }
             };
         }

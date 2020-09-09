@@ -14,8 +14,10 @@ const socket = {
         const pid = Math.floor(Math.random() * (65536)).toString(16)
         const machine = Math.floor(Math.random() * (16777216)).toString(16)
         const timestamp = Math.floor(new Date().valueOf() / 1000).toString(16)
-        return '00000000'.substr(0, 8 - timestamp.length) + timestamp + '000000'.substr(0, 6 - machine.length) + machine +
-            '0000'.substr(0, 4 - pid.length) + pid + '000000'.substr(0, 6 - increment.length) + increment;
+        return '00000000'.substr(0, 8 - timestamp.length) +
+            timestamp + '000000'.substr(0, 6 - machine.length) +
+            machine + '0000'.substr(0, 4 - pid.length) +
+            pid + '000000'.substr(0, 6 - increment.length) + increment;
     },
     init: function (server) {
         socket.server = new WebSocket.Server({
@@ -23,7 +25,7 @@ const socket = {
             autoAcceptConnections: false
         })
         socket.server.on('connection', function connection(ws) {
-            ws.on('message', function incoming(message) {                          // handle incoming request
+            ws.on('message', function incoming(message) { // handle incoming request
                 const connectionId = socket.createOid()
                 const sendFunc = socket.send(ws)
                 socket.connections.push({ connectionId: connectionId, sendFunc: sendFunc })
