@@ -1,4 +1,4 @@
-// monolithic_server.js ~ Copyright 2020 Paul Beaudet ~ MIT License
+// monolithic_server.js ~ Copyright 2019-2020 Paul Beaudet ~ MIT License
 const express = require('express')
 const app = express()
 const path = require('path')
@@ -9,7 +9,7 @@ const fs = require('fs')        // built in file system library
 const socket = {
     server: null,
     connections: [],
-    createOid: function () {
+    createOid: () => {
         const increment = Math.floor(Math.random() * (16777216)).toString(16)
         const pid = Math.floor(Math.random() * (65536)).toString(16)
         const machine = Math.floor(Math.random() * (16777216)).toString(16)
@@ -19,69 +19,95 @@ const socket = {
             machine + '0000'.substr(0, 4 - pid.length) +
             pid + '000000'.substr(0, 6 - increment.length) + increment;
     },
-    init: function (server) {
+    init: (server) => {
         socket.server = new WebSocket.Server({
-            server: server,
+            server,
             autoAcceptConnections: false
         })
-        socket.server.on('connection', function connection(ws) {
-            ws.on('message', function incoming(message) { // handle incoming request
+        socket.server.on('connection', ws => {
+            // handle incoming request
+            ws.on('message', message => {
                 const connectionId = socket.createOid()
                 const sendFunc = socket.send(ws)
-                socket.connections.push({ connectionId: connectionId, sendFunc: sendFunc })
+                socket.connections.push({
+                    connectionId,
+                    sendFunc,
+                })
                 socket.incoming(message, sendFunc, connectionId)
-            });
-        });
+            })
+        })
     },
-    send: function (ws) {
-        return function (msgObj) {
+    send: ws => {
+        return msgObj => {
             let msg = ''
-            try { msg = JSON.stringify(msgObj); } catch (err) { console.log(error); }
+            try { msg = JSON.stringify(msgObj) }
+            catch (err) { console.log(error) }
             console.log('response from server ' + msg)
             if (ws.readyState === WebSocket.OPEN) {
                 ws.send(msg)
                 return true
             } else { return false }
-        };
+        }
     },
-    sendTo: function (oid, msgObj) {
+    sendTo: (oid, msgObj) => {
         let msg = ''
-        try { msg = JSON.stringify(msgObj) } catch (err) { console.log(error) }
+        try { msg = JSON.stringify(msgObj) }
+        catch (error) { console.log(error) }
         console.log('response from server ' + msg)
-        for (var i = 0; i < socket.connections.length; i++) {
+        for (let i = 0; i < socket.connections.length; i++) {
             if (socket.connections[i].connectionId === oid) {
-                if (socket.connections[i].sendFunc(msgObj)) { return true }
-                else { return false }
+                const sent = socket.connections[i].sendFunc(msgObj)
+                return sent ? true : false
             }
         }
         return false
     },
-    on: function (action, func) { socket.handlers.push({ action: action, func: func }) },
-    handlers: [{ action: 'msg', func: function (req) { console.log(req.msg) } }],
-    incoming: function (event, sendFunc, connectionId) {                       // handle incoming socket messages
+    on: (action, func) => {
+        socket.handlers.push({ action: action, func: func })
+    },
+    handlers: [{ action: 'msg', func: req => { console.log(req.msg) } }],
+    // handle incoming socket messages
+    incoming: (event, sendFunc, connectionId) => {
         let req = { action: null }
-        try { req = JSON.parse(event) } catch (error) { console.log(error) } // if error we don't care there is a default object
-        function apiGWCallback(firstArg, secondArg) { console.log(JSON.stringify(secondArg)) }
-        for (var h = 0; h < socket.handlers.length; h++) {
+        // if error we don't care there is a default object
+        try { req = JSON.parse(event) }
+        catch (error) { console.log(error) }
+        const apiGWCallback = (firstArg, secondArg) => {
+            console.log(JSON.stringify(secondArg))
+        }
+        for (let h = 0; h < socket.handlers.length; h++) {
             if (req.action === socket.handlers[h].action) {
-                apiGWEvent = { body: event, deabute: { sendTo: socket.sendTo, response: sendFunc }, requestContext: { connectionId: connectionId } }
+                apiGWEvent = {
+                    body: event,
+                    deabute: {
+                        sendTo: socket.sendTo,
+                        response: sendFunc
+                    },
+                    requestContext: {
+                        connectionId
+                    }
+                }
                 socket.handlers[h].func(apiGWEvent, {}, apiGWCallback)
                 return
             }
         }
-        if (req.message === 'Internal server error') { console.log('Oops something when wrong: ' + JSON.stringify(req)); return; }
-        console.log('no handler ' + event);
+        if (req.message === 'Internal server error') {
+            console.log('Oops something when wrong: ' + JSON.stringify(req))
+            return
+        }
+        console.log('no handler ' + event)
     }
 }
 
 const serverless = {
-    read: function (onFinish) {
-        fs.readFile('serverless.yml', 'utf8', function (err, data) {
-            onFinish(yaml.safeLoad(data))   // pass env vars and call next thing to do
-        });
+    read: onFinish => {
+        fs.readFile('serverless.yml', 'utf8', (err, data) => {
+            // pass env vars and call next thing to do
+            onFinish(yaml.safeLoad(data))
+        })
     },
-    forFunctions: function (on) {
-        return function (config) {
+    forFunctions: on => {
+        return config => {
             if (config.functions) {
                 for (let key in config.functions) {
                     const handler = config.functions[key].handler.split('.')
@@ -89,21 +115,23 @@ const serverless = {
                     const mod = require(path.join(__dirname, handler[0]))
                     on(config.functions[key].events[0].websocket.route, mod[funcName])
                 }
-            } else { console.log('not the serverless we are looking for or the one we need') }
+            } else {
+                console.log('not the serverless we are looking for or the one we need')
+            }
         }
     }
 }
 
-module.exports = function serve() {
+module.exports = () => {
     app.use(express.static('build'))
     const router = express.Router()
-    router.get('/:erm', function (req, res) {
+    router.get('/:erm', (req, res) => {
         res.status(200)
         res.sendFile(path.join(__dirname + '/build/index.html'))
     })
     app.use(router)
     const web_server = app.listen(process.env.PORT)
-    socket.init(web_server); // set up socket server and related event handlers
+    socket.init(web_server) // set up socket server and related event handlers
     serverless.read(serverless.forFunctions(socket.on))
 }
 
