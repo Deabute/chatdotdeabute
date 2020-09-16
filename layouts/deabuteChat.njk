@@ -10,18 +10,18 @@
     <div id="loginsignup" style="float:right">
         <p id='accountStatus' hidden>Enter username and password<p>
         <div id="accountOptions">
-            <button onclick="deabute.signup()" id="signup">Signup</button>
+            <button id="authSignup" id="signup">Signup</button>
             <span> - or - </span>
-            <button onclick="deabute.login()" id="signup">Login</button>
+            <button id="authLogin" id="signup">Login</button>
         </div>
-        <div id='credBox' hidden>
+        <div id="credBox" hidden>
             <label for="username">Username </label>
             <input type="text" id="username"></input>
             <br>
             <label for="password">Password </label>
             <input type="password" id="password"></input>
             <br>
-            <button onclick="deabute.submit()">Submit</button>
+            <button id="authSubmit">Submit</button>
         </div>
     </div>
     <h3>Deabute Chat</h3>
@@ -32,7 +32,12 @@
         <p id="accountserver"> {{ accountserver }} </p>
         <p id="serviceWindow"> {{ testing }} </p>
     </div>
-    <script type="text/javascript" src="{{ url }}/js/dependencies.js"></script>
-    <script type="text/javascript" src="{{ url }}/js/chat3.js"></script>
+    <script type="module" src="{{ url }}/js/prompt.js"></script>
+    <script type="module" src="{{ url }}/js/pool.js"></script>
+    <script type="module" src="{{ url }}/js/rtc.js"></script>
+    <script type="module" src="{{ url }}/js/deabute.js"></script>
+    <script type="module" src="{{ url }}/js/ws.js"></script>
+    <script type="module" src="{{ url }}/js/persistence.js"></script>
+    <script type="module" src="{{ url }}/js/index.js"></script>
 </body>
 </html>

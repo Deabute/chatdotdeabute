@@ -1,4 +1,10 @@
 // chat3.js ~ copyright 2019-2020 Paul Beaudet ~ MIT License
+import persistence from './persistence.js';
+import pool from './pool.js';
+import prompt from './prompt.js';
+import rtc, { dataPeer, media } from './rtc.js';
+import ws from './ws.js';
+
 const TIME_FOR_CONSENT = 30;
 let DAY_OF_WEEK = 1;
 let HOUR_OF_DAY = 12;
@@ -224,15 +230,11 @@ const app = {
         ws.init(() => {
           // ws.init will have likely already been called to get status
           // connections can timeout in 2 minutes, needing a second init
-          let token = '';
           if (channel.multi) {
             channel.type = 'multi';
             serviceTime.onWSConnect();
           } else {
             channel.type = 'single';
-            if (channel.mine) {
-              token = localStorage.token;
-            } // this will already be determined by status call
           }
           dataPeer.consent = peer => {
             app.consent(peer);
@@ -256,7 +258,7 @@ const app = {
     media.switchAudio(false);
     prompt.create(prompt.review, answer => {
       // closes rtc connection, order important
-      ws.repool(answer);
+      lifecycle.repool(answer);
       app.description.innerHTML = 'Waiting for potential connections... ';
     });
     dataPeer.disconnect(human);
@@ -305,11 +307,90 @@ const app = {
   },
 };
 
+const deabute = {
+  signupButton: document.getElementById('signup'),
+  loginButton: document.getElementById('login'),
+  username: document.getElementById('username'),
+  password: document.getElementById('password'),
+  accountOptions: document.getElementById('accountOptions'),
+  credBox: document.getElementById('credBox'),
+  status: document.getElementById('accountStatus'),
+  accountAction: 'signup',
+  login: () => {
+    deabute.display('login');
+  },
+  signup: () => {
+    deabute.display('signup');
+  },
+  display: action => {
+    deabute.accountAction = action;
+    deabute.accountOptions.hidden = true;
+    deabute.status.hidden = false;
+    deabute.credBox.hidden = false;
+    // show sign up box
+  },
+  submit: () => {
+    const regex = /^[a-z]+$/;
+    // make sure there are only lowercase a-z to the last letter
+    if (deabute.username.value && deabute.password.value) {
+      if (regex.test(deabute.username.value)) {
+        deabute.credBox.hidden = true;
+        ws.send({
+          action: deabute.accountAction,
+          username: deabute.username.value,
+          password: deabute.password.value,
+          oid: localStorage.oid,
+        });
+      } else {
+        deabute.status.innerHTML = 'Username must be lowercase letters';
+      }
+    } else {
+      deabute.status.innerHTML = 'Missing information';
+    }
+  },
+  onUser: (mine, channelName, username) => {
+    if (mine) {
+      deabute.status.innerHTML =
+        'Hey ' + username + '! Welcome to your channel';
+    } else {
+      deabute.status.innerHTML =
+        'Hey ' + username + '! Welcome to ' + channelName + "'s channel";
+    }
+    deabute.status.hidden = false;
+  },
+  rejected: req => {
+    console.log('on rejected');
+    deabute.status.innerHTML = req.msg;
+    deabute.credBox.hidden = false;
+  },
+  onFail: req => {
+    deabute.status.innerHTML = req.msg;
+  },
+};
+
+const authFlow = {
+  onLogin: req => {
+    if (req.token && req.oid) {
+      localStorage.oid = req.oid;
+      localStorage.username = req.username;
+      localStorage.token = req.token;
+      localStorage.paid = req.paid;
+      deabute.onUser(channel.mine, channel.name, localStorage.username);
+    } else {
+      deabute.status.innerHTML = 'Oops something when wrong';
+    }
+  },
+  onSignup: () => {
+    deabute.onUser(channel.mine, channel.name, deabute.username.value);
+    deabute.credBox.hidden = true;
+  },
+};
+
 const setup = {
   // methods that are interconnected and intertwined with dependencies
   ws: () => {
     ws.on('offer', req => {
-      rtc.init(dataChannel => {
+      rtc.init(() => {
         dataPeer.channel = rtc.createDataChannel(dataPeer.newChannel);
         rtc.giveAnswer(req.sdp, req.id, req.gwid);
       }, media.stream);
@@ -320,7 +401,7 @@ const setup = {
       if (req.pool) {
         pool.onSet(req);
       }
-      rtc.init(dataChannel => {
+      rtc.init(() => {
         dataPeer.channel = rtc.createDataChannel(dataPeer.newChannel);
         rtc.createOffer();
       }, media.stream);
@@ -328,8 +409,8 @@ const setup = {
     });
     ws.on('setPool', pool.onSet);
     ws.on('pool', pool.onIncrement);
-    ws.on('loggedin', deabute.onLogin);
-    ws.on('signedup', deabute.onSignup);
+    ws.on('loggedin', authFlow.onLogin);
+    ws.on('signedup', authFlow.onSignup);
     ws.on('reject', deabute.rejected);
     ws.on('fail', deabute.onFail);
     ws.on('status', channel.status);
@@ -340,7 +421,7 @@ const setup = {
       rtc.close(talking);
     };
     dataPeer.inactiveOnConfluence = () => {
-      ws.reduce(true);
+      lifecycle.reduce(true);
       app.connectButton.onclick = () => {
         dataPeer.clientReady = true;
         dataPeer.setReconsentInactive();
@@ -352,11 +433,11 @@ const setup = {
     dataPeer.onReady = () => {
       console.log('about to turn on microphone');
       media.switchAudio(true); // switch audio on
-      ws.reduce(false); // reduce from connection pool
+      lifecycle.reduce(false); // reduce from connection pool
       app.whenConnected(); // change app to look like connected
     };
     dataPeer.setReconsentInactive = () => {
-      ws.repool();
+      lifecycle.repool();
       app.timeouts = setTimeout(app.consent, TIME_FOR_CONSENT * 1000);
     };
     dataPeer.setReconsentActive = () => {
@@ -403,6 +484,35 @@ const setup = {
   },
 };
 
+const lifecycle = {
+  reduce: pause => {
+    if (ws.active) {
+      ws.send({
+        action: 'reduce',
+        oid: localStorage.oid,
+        pause: pause,
+        owner: localStorage.paid === 'true' ? true : false,
+        token: localStorage.token,
+      });
+    }
+    ws.active = false;
+  },
+  repool: answer => {
+    if (!ws.active) {
+      const msg = {
+        oid: localStorage.oid,
+        owner: localStorage.paid === 'true' ? true : false,
+        token: localStorage.token,
+        answer: answer,
+        type: channel.type,
+        link: channel.name,
+      };
+      ws.msg('repool', msg);
+    } // let server know we can be rematched
+    ws.active = true;
+  },
+};
+
 persistence.init(capable => {
   if (capable) {
     window.addEventListener('beforeunload', event => {
@@ -435,3 +545,8 @@ setup.rtc();
 setup.ws();
 setup.dataPeer();
 setup.pool();
+
+document.querySelector('#authSubmit').addEventListener('click', deabute.submit);
+document.querySelector('#authSignup').addEventListener('click', deabute.signup);
+document.querySelector('#authLogin').addEventListener('click', deabute.login);
+document.querySelector('#setupButton').addEventListener('click', app.setup);
