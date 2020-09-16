@@ -67,7 +67,7 @@ const socket = {
           ConnectionId: connectionId,
           Data: JSON.stringify(jsonData),
         },
-        (error, data) => {
+        error => {
           if (error) {
             unresponsiveCB(connectionId);
           } else {
@@ -164,7 +164,7 @@ const mongo = {
   },
 };
 
-const parseBody = body => {
+const parseBody = (body, callback) => {
   try {
     const jsonBody = JSON.parse(body);
     return jsonBody;

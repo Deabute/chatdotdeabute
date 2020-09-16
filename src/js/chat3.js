@@ -66,7 +66,7 @@ var serviceTime = {
   },
   onWSConnect: function () {
     app.waiting();
-    currentTime = new Date().getTime();
+    const currentTime = new Date().getTime();
     var startTime = serviceTime.begin.getTime();
     if (currentTime < startTime) {
       // this is the case where we are counting down

@@ -90,7 +90,7 @@ var rtc = {
     rtc.connectionGwid = req.gwid;
     rtc.peer.setRemoteDescription(req.sdp);
   },
-  close: function (talking) {
+  close: function () {
     if (rtc.peer) {
       // clean up pre existing rtc connection if
       rtc.peer.close();
@@ -119,7 +119,7 @@ var dataPeer = {
     dataPeer.peerName = '';
   },
   newChannel: function (event) {
-    receiveChannel = event.channel;
+    const receiveChannel = event.channel;
     // receive channel events handlers created on connection
     dataPeer.on('terminate', dataPeer.close);
     dataPeer.on('ready', dataPeer.whenReady);
@@ -153,7 +153,9 @@ var dataPeer = {
     var req = { action: null }; // request default
     try {
       req = JSON.parse(event.data);
-    } catch (error) {} // probably should be wrapped in error handler
+    } catch (error) {
+      console.log(error);
+    } // probably should be wrapped in error handler
     for (var h = 0; h < dataPeer.handlers.length; h++) {
       if (req.action === dataPeer.handlers[h].action) {
         dataPeer.handlers[h].func(req);
@@ -496,7 +498,9 @@ var ws = {
     var req = { action: null };
     try {
       req = JSON.parse(event.data);
-    } catch (error) {}
+    } catch (error) {
+      console.log(error);
+    }
     // if error we don't care there is a default object
     for (var h = 0; h < ws.handlers.length; h++) {
       if (req.action === ws.handlers[h].action) {
@@ -589,7 +593,7 @@ var deabute = {
       deabute.status.innerHTML = 'Oops something when wrong';
     }
   },
-  onSignup: function (req) {
+  onSignup: function () {
     deabute.onUser(channel.mine, channel.name, deabute.username.value);
     deabute.credBox.hidden = true;
   },

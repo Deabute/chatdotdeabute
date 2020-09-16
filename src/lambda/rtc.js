@@ -7,7 +7,7 @@ const { mongo, socket, parseBody } = require(path.join(
 
 const rtc = {
   ice: (event, context, callback) => {
-    event.body = parseBody(event.body);
+    event.body = parseBody(event.body, callback);
     if (event.body && event.body.candidates && event.body.gwid) {
       socket.send(
         event,
@@ -36,7 +36,7 @@ const rtc = {
     }
   },
   answer: (event, context, callback) => {
-    event.body = parseBody(event.body);
+    event.body = parseBody(event.body, callback);
     if (event.body && event.body.sdp && event.body.oid && event.body.gwid) {
       socket.send(
         event,
@@ -205,7 +205,7 @@ const prompt = {
       client
         .db(mongo.db)
         .collection(mongo.answer)
-        .insertOne(event.body.answer, (error, result) => {
+        .insertOne(event.body.answer, error => {
           if (error) {
             issue(error);
           } else {
@@ -242,7 +242,7 @@ const pool = {
         if (result) {
           success();
         } else {
-          issue('update fail');
+          issue(`update fail: ${error}`);
         }
       }
     );
@@ -418,7 +418,7 @@ const pool = {
         }
       );
   },
-  notifyReduce: (client, event, success, issue) => {
+  notifyReduce: (client, event, success) => {
     let duds = [];
     let docCount = 0;
     let docFinished = 0;
@@ -464,7 +464,7 @@ const pool = {
     );
   },
   reduce: (event, context, callback) => {
-    event.body = parseBody(event.body);
+    event.body = parseBody(event.body, callback);
     if (!event.body.channel) {
       event.body.channel = 'default';
     }
@@ -500,7 +500,7 @@ const pool = {
 
 const connection = {
   pause: (event, context, callback) => {
-    event.body = parseBody(event.body);
+    event.body = parseBody(event.body, callback);
     if (event.body && event.body.oid) {
       mongo.connect(
         (db, client) => {
@@ -526,7 +526,7 @@ const connection = {
     }
   },
   rematch: (event, context, callback) => {
-    event.body = parseBody(event.body);
+    event.body = parseBody(event.body, callback);
     if (!event.body.channel) {
       event.body.channel = 'default';
     }
@@ -589,7 +589,7 @@ const connection = {
     }
   },
   remove: (event, context, callback) => {
-    event.body = parseBody(event.body);
+    event.body = parseBody(event.body, callback);
     mongo.connect(
       (db, client) => {
         db.deleteOne({ oid: event.body.oid }, (deleteError, result) => {

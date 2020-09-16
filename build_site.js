@@ -27,7 +27,7 @@ Metalsmith(__dirname)
       },
     })
   )
-  .build((error, files) => {
+  .build(error => {
     if (error) {
       throw error;
     }

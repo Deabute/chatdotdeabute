@@ -48,7 +48,7 @@ const socket = {
       let msg = '';
       try {
         msg = JSON.stringify(msgObj);
-      } catch (err) {
+      } catch (error) {
         console.log(error);
       }
       console.log('response from server ' + msg);
@@ -101,7 +101,7 @@ const socket = {
     };
     for (let h = 0; h < socket.handlers.length; h++) {
       if (req.action === socket.handlers[h].action) {
-        apiGWEvent = {
+        const apiGWEvent = {
           body: event,
           deabute: {
             sendTo: socket.sendTo,

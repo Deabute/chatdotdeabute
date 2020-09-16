@@ -57,7 +57,7 @@ const login = {
     );
   },
   lambda: (event, context, callback) => {
-    event.body = parseBody(event.body);
+    event.body = parseBody(event.body, callback);
     if (event.body) {
       mongo.connect(
         (db, client) => {
@@ -147,7 +147,7 @@ const signup = {
     );
   },
   lambda: (event, context, callback) => {
-    event.body = parseBody(event.body);
+    event.body = parseBody(event.body, callback);
     if (event.body && event.body.password && event.body.username) {
       mongo.connect(
         (db, client) => {
@@ -268,7 +268,7 @@ const status = {
       });
   },
   lambda: (event, context, callback) => {
-    event.body = parseBody(event.body);
+    event.body = parseBody(event.body, callback);
     if (event.body && event.body.channel) {
       mongo.connect(
         (db, client) => {
