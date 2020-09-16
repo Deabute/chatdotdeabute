@@ -1,15 +1,17 @@
-// dependencies.js ~ copyright 2019 ~ Paul Beaudet
-// Singletons that form base of deabute services that have little to no interdependence
+// dependencies.js ~ copyright 2019-2020 ~ Paul Beaudet
 var rtc = {
-  // stun servers in config allow client to introspect a communication path to offer a remote peer
+  // stun servers in config allow client to introspect a communication path
+  // to offer a remote peer
   config: {
     iceServers: [
       { urls: 'stun:stun.stunprotocol.org:3478' },
       { urls: 'stun:stun.l.google.com:19302' },
     ],
   },
-  peer: null, // placeholder for parent webRTC object instance
-  connectionId: '', // oid of peer we are connected w/
+  peer: null,
+  // placeholder for parent webRTC object instance
+  connectionId: '',
+  // oid of peer we are connected w/
   lastPeer: '',
   connectionGwid: '',
   candidates: [],
@@ -28,7 +30,8 @@ var rtc = {
         }, 50);
       }
     }
-  }, // Note that sdp is going to be negotiated first regardless of any media being involved. its faster to resolve, maybe?
+  }, // Note that sdp is going to be negotiated first
+  // regardless of any media being involved. its faster to resolve, maybe?
   receiveIce: function (req) {
     console.log('getting ice from host');
     for (var i = 0; i < req.candidates.length; i++) {
@@ -37,19 +40,23 @@ var rtc = {
   },
   init: function (onSetupCB, stream) {
     // verify media stream before calling
-    rtc.peer = new RTCPeerConnection(rtc.config); // create new instance for local client
+    rtc.peer = new RTCPeerConnection(rtc.config);
+    // create new instance for local client
     stream.getTracks().forEach(function (track) {
       rtc.peer.addTrack(track, stream);
     });
     rtc.peer.ontrack = function (event) {
       document.getElementById('mediaStream').srcObject = event.streams[0];
     }; // behavior upon receiving track
-    rtc.peer.onicecandidate = rtc.onIce; // Handle ice candidate at any random time they decide to come
-    onSetupCB(); // create and offer or answer depending on what initiated
+    rtc.peer.onicecandidate = rtc.onIce;
+    // Handle ice candidate at any random time they decide to come
+    onSetupCB();
+    // create and offer or answer depending on what initiated
   },
   createDataChannel: function (onCreation) {
     var dataChannel = rtc.peer.createDataChannel('chat');
-    rtc.peer.ondatachannel = onCreation; // creates data endpoints for remote peer on rtc connection
+    rtc.peer.ondatachannel = onCreation;
+    // creates data endpoints for remote peer on rtc connection
     return dataChannel;
   },
   createOffer: function () {
@@ -58,7 +65,8 @@ var rtc = {
       .createOffer({ offerToReceiveAudio: 1, offerToReceiveVideo: 0 })
       .then(function onOffer(desc) {
         // get sdp data to show user & share w/ friend
-        return rtc.peer.setLocalDescription(desc); // note what sdp data self will use
+        return rtc.peer.setLocalDescription(desc);
+        // note what sdp data self will use
       })
       .then(rtc.offerSignal);
   },
@@ -70,7 +78,8 @@ var rtc = {
       .createAnswer()
       .then(function onAnswer(answer) {
         // create answer to remote peer that offered
-        return rtc.peer.setLocalDescription(answer); // set that offer as our local description
+        return rtc.peer.setLocalDescription(answer);
+        // set that offer as our local description
       })
       .then(function onOfferSetDesc() {
         rtc.answerSignal(oidFromOffer, gwidOfPartner);
@@ -95,9 +104,12 @@ var rtc = {
 
 var dataPeer = {
   channel: null,
-  ready: false, // other human is ready
-  clientReady: false, // I, human am ready
-  talking: false, // WE, humans are talking
+  ready: false,
+  // other human is ready
+  clientReady: false,
+  // I, human am ready
+  talking: false,
+  // WE, humans are talking
   peerName: '',
   consent: function () {},
   close: function () {
@@ -107,7 +119,8 @@ var dataPeer = {
     dataPeer.peerName = '';
   },
   newChannel: function (event) {
-    receiveChannel = event.channel; // receive channel events handlers created on connection
+    receiveChannel = event.channel;
+    // receive channel events handlers created on connection
     dataPeer.on('terminate', dataPeer.close);
     dataPeer.on('ready', dataPeer.whenReady);
     dataPeer.on('connect', function (req) {
@@ -118,7 +131,8 @@ var dataPeer = {
         dataPeer.readySignal();
       } // client may already be ready if reconnecting
     });
-    receiveChannel.onmessage = dataPeer.incoming; // handle events upon opening connection
+    receiveChannel.onmessage = dataPeer.incoming;
+    // handle events upon opening connection
     receiveChannel.onopen = function onOpen() {
       dataPeer.send({ action: 'connect', username: localStorage.username });
     };
@@ -193,11 +207,13 @@ var dataPeer = {
       } // this needs more explanation
       if (dataPeer.clientReady) {
         dataPeer.setReconsentActive();
-      } // active client doesn't know, but may need to be gauged for attention if takes too long
+      } // active client doesn't know,
+      // but may need to be gauged for attention if takes too long
       else {
         dataPeer.inactiveOnConfluence();
-      } // this client is eating pie or doing something other than paying attention
-      dataPeer.close(); // connection closes in this case so candidates can move on
+      } // this client is doing something other than paying attention
+      dataPeer.close();
+      // connection closes in this case so candidates can move on
     }
   },
 };
@@ -206,7 +222,8 @@ var pool = {
   indicator: document.getElementById('poolInd'),
   display: document.getElementById('pool'),
   onOwner: function () {},
-  count: 0, // assume peer is counted in pool
+  count: 0,
+  // assume peer is counted in pool
   onIncrement: function (req) {
     if (req.owner) {
       pool.onOwner();
@@ -284,13 +301,16 @@ var prompt = {
   create: function (questionObj, onAnswer) {
     if (!prompt.form.hidden) {
       return;
-    } // prevent one prompt from being created on top of other by only creating prompt from shown form state
-    prompt.form.hidden = false; // Show prompt form
+    } // prevent one prompt from being created on top of other
+    // by only creating prompt from shown form state
+    prompt.form.hidden = false;
+    // Show prompt form
     prompt.field.innerHTML = questionObj.question;
     var answerBundle = document.createElement('div');
     answerBundle.id = 'answerBundle';
     prompt.answers.appendChild(answerBundle);
-    var halfway = Math.floor(questionObj.answers.length / 2); // figure middle answer index
+    var halfway = Math.floor(questionObj.answers.length / 2);
+    // figure middle answer index
     for (var i = 0; i < questionObj.answers.length; i++) {
       var radioLabel = document.createElement('label');
       var radioOption = document.createElement('input');
@@ -304,7 +324,8 @@ var prompt = {
       radioOption.name = 'answer';
       radioOption.value = i;
       answerBundle.appendChild(radioOption);
-      answerBundle.appendChild(radioLabel); // append option and label
+      answerBundle.appendChild(radioLabel);
+      // append option and label
       answerBundle.appendChild(document.createElement('br'));
     }
     prompt.form.addEventListener(
@@ -312,7 +333,8 @@ var prompt = {
       function submitAnswer(event) {
         event.preventDefault();
         var radios = document.getElementsByName('answer');
-        var unifiedIndex = 4 - halfway; // determines relative start value from universal middle value
+        var unifiedIndex = 4 - halfway;
+        // determines relative start value from universal middle value
         for (var entry = 0; entry < radios.length; entry++) {
           // for all possible current question answers
           if (radios[entry].checked) {
@@ -329,16 +351,19 @@ var prompt = {
                 persistence.answers.id === questionObj.id
               ) {
                 // overwrite existing entries
-                persistence.answers[peer].score = unifiedIndex + entry; // add property to entry
+                persistence.answers[peer].score = unifiedIndex + entry;
+                // add property to entry
                 persistence.answers[peer].id = questionObj.id;
                 prompt.onSubmit(onAnswer, answer);
                 return; // save and end function
               }
             }
 
-            persistence.answers.push(answer); // if peer not found push as new entry
+            persistence.answers.push(answer);
+            // if peer not found push as new entry
             prompt.onSubmit(onAnswer, answer);
-            return; // save and end function
+            return;
+            // save and end function
           }
         }
       },
@@ -346,7 +371,8 @@ var prompt = {
     );
   },
   onSubmit: function (whenDone, answer) {
-    localStorage.answers = JSON.stringify(persistence.answers); // save any recorded answer
+    localStorage.answers = JSON.stringify(persistence.answers);
+    // save any recorded answer
     prompt.caller = false;
     prompt.answers.innerHTML = '';
     prompt.form.hidden = true;
@@ -404,11 +430,13 @@ var persistence = {
 
 var ws = {
   active: false,
-  instance: null, // placeholder for websocket object
+  instance: null,
+  // placeholder for websocket object
   server: document.getElementById('socketserver').innerHTML,
   init: function (onConnection) {
     if (ws.instance) {
-      // makes it so that init function can be called liberally to assure that we are maintaining connection
+      // makes it so that init function can be called liberally
+      //  to assure that we are maintaining connection
       if (onConnection) {
         onConnection();
       }
@@ -465,10 +493,11 @@ var ws = {
   },
   incoming: function (event) {
     // handle incoming socket messages
-    var req = { action: null }; // request
+    var req = { action: null };
     try {
       req = JSON.parse(event.data);
-    } catch (error) {} // if error we don't care there is a default object
+    } catch (error) {}
+    // if error we don't care there is a default object
     for (var h = 0; h < ws.handlers.length; h++) {
       if (req.action === ws.handlers[h].action) {
         ws.handlers[h].func(req);
@@ -517,10 +546,12 @@ var deabute = {
     deabute.accountAction = action;
     deabute.accountOptions.hidden = true;
     deabute.status.hidden = false;
-    deabute.credBox.hidden = false; // show sign up box
+    deabute.credBox.hidden = false;
+    // show sign up box
   },
   submit: function () {
-    var regex = /^[a-z]+$/; // make sure there are only lowercase a-z to the last letter
+    var regex = /^[a-z]+$/;
+    // make sure there are only lowercase a-z to the last letter
     if (deabute.username.value && deabute.password.value) {
       if (regex.test(deabute.username.value)) {
         deabute.credBox.hidden = true;

@@ -1,6 +1,4 @@
-// chat3.js ~ copyright 2019 Paul Beaudet ~ MIT License
-// rtcSignal version - 1.0.28
-// This test requires at least two browser windows, to open a data connection between two peer
+// chat3.js ~ copyright 2019-2020 Paul Beaudet ~ MIT License
 var TIME_FOR_CONSENT = 30;
 var DAY_OF_WEEK = 1;
 var HOUR_OF_DAY = 12;
@@ -17,9 +15,11 @@ var serviceTime = {
   WINDOW: document.getElementById('serviceWindow').innerHTML,
   sessionInd: document.getElementById('sessionInd'),
   closed: function (millisTill) {
-    serviceTime.begin.setUTCHours(HOUR_OF_DAY, 0); // set back to true begin time, always on hour
+    serviceTime.begin.setUTCHours(HOUR_OF_DAY, 0);
+    // set back to true begin time, always on hour
     app.outsideService();
-    app.timeouts = setTimeout(serviceTime.open, millisTill); // open in upcoming window
+    app.timeouts = setTimeout(serviceTime.open, millisTill);
+    // open in upcoming window
   },
   outside: function (day, utcHour) {
     DAY_OF_WEEK = typeof day === 'undefined' ? DAY_OF_WEEK : day;
@@ -30,7 +30,8 @@ var serviceTime = {
     var timeNow = serviceTime.begin.getTime();
     var endTime = new Date();
     serviceTime.begin.setDate(dateNow + (DAY_OF_WEEK - dayNow));
-    serviceTime.begin.setUTCHours(HOUR_OF_DAY - 1, OPEN_MINUTE, 0, 0); // open window x minutes before actual begin
+    serviceTime.begin.setUTCHours(HOUR_OF_DAY - 1, OPEN_MINUTE, 0, 0);
+    // open window x minutes before actual begin
     var millisBegin = serviceTime.begin.getTime();
     endTime.setDate(dateNow + (DAY_OF_WEEK - dayNow));
     endTime.setUTCHours(HOUR_OF_DAY + 1, 0, 0, 0);
@@ -46,17 +47,22 @@ var serviceTime = {
       // if begin time is in past
       if (endTime.getTime() < timeNow) {
         // if this window ending has passed, outside of window
-        serviceTime.begin.setDate(serviceTime.begin.getDate() + 7); // set begin date to next week
-        serviceTime.closed(serviceTime.begin.getTime() - timeNow); // reflect millis beginning in future
+        serviceTime.begin.setDate(serviceTime.begin.getDate() + 7);
+        // set begin date to next week
+        serviceTime.closed(serviceTime.begin.getTime() - timeNow);
+        // reflect millis beginning in future
       } else {
         serviceTime.open();
       }
     }
-    serviceTime.box.innerHTML = serviceTime.begin.toLocaleString(); // display true begin time
+    serviceTime.box.innerHTML = serviceTime.begin.toLocaleString();
+    // display true begin time
   },
   open: function () {
-    serviceTime.begin.setUTCHours(HOUR_OF_DAY, 0); // set back to true begin time, always on hour
-    app.proposition('Matching about to occur for this channel'); // ask about name and microphone to start getting set up
+    serviceTime.begin.setUTCHours(HOUR_OF_DAY, 0);
+    // set back to true begin time, always on hour
+    app.proposition('Matching about to occur for this channel');
+    // ask about name and microphone to start getting set up
   },
   onWSConnect: function () {
     app.waiting();
@@ -72,8 +78,10 @@ var serviceTime = {
       }
       if (serviceTime.countDown < CONSENT_SECOND) {
         // time to consent has passed
-        app.triggerConsent(); // trigger concent dialog if connected to peer
-        serviceTime.countDown = TIME_FOR_CONSENT - 1; // give time for someone to actually consent before confluence
+        app.triggerConsent();
+        // trigger concent dialog if connected to peer
+        serviceTime.countDown = TIME_FOR_CONSENT - 1;
+        // give time for someone to actually consent before confluence
       }
       app.timeouts = setTimeout(serviceTime.downCount, firstTimeout);
     } else {
@@ -96,9 +104,11 @@ var serviceTime = {
         }
         serviceTime.downCount();
       } else {
-        serviceTime.box.innerHTML = 'Currently matching users'; // display true begin time
+        serviceTime.box.innerHTML = 'Currently matching users';
+        // display true begin time
         serviceTime.box.innerHTML = 0;
-        serviceTime.countDown = 0; // TODO setTimeout for next window
+        serviceTime.countDown = 0;
+        // TODO setTimeout for next window
       }
     }, 1000); // minute one for last second id in array
   },
@@ -114,7 +124,8 @@ var channel = {
     var addressArray = window.location.href.split('/');
     if (addressArray.length === 4) {
       var route = addressArray[3];
-      var regex = /^[a-z]+$/; // make sure there are only lowercase a-z to the last letter
+      var regex = /^[a-z]+$/;
+      // make sure there are only lowercase a-z to the last letter
       if (regex.test(route)) {
         channel.name = route;
         inChannel(route);
@@ -211,7 +222,8 @@ var app = {
       } else if (mediaStream) {
         app.description.innerHTML = 'Waiting for potential connections... ';
         ws.init(function () {
-          // ws.init will have likely already been called to get status, connections can timeout in 2 minutes, needing a second init
+          // ws.init will have likely already been called to get status
+          // connections can timeout in 2 minutes, needing a second init
           var token = '';
           if (channel.multi) {
             channel.type = 'multi';
@@ -247,7 +259,8 @@ var app = {
       ws.repool(answer);
       app.description.innerHTML = 'Waiting for potential connections... ';
     });
-    dataPeer.disconnect(human); // NOTE closing connection will remove id that was passed to prompt
+    dataPeer.disconnect(human);
+    // NOTE closing connection will remove id that was passed to prompt
     app.description.innerHTML = '';
     app.connectButton.hidden = true;
   },
@@ -258,9 +271,11 @@ var app = {
     if (serviceTime.countDown >= CONSENT_SECOND) {
       app.triggerConsent = function () {
         app.consent(peer);
-        app.triggerConsent = function () {}; // reset trigger to an empty function
+        app.triggerConsent = function () {};
+        // reset trigger to an empty function
       };
-      return; // given serviceTime is in countdown wait until it triggers consent
+      return;
+      // given serviceTime is in countdown wait until it triggers consent
     }
     var greet = 'Are you ready to chat?';
     if (channel.mine) {

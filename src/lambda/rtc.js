@@ -254,7 +254,8 @@ const pool = {
     let docCount = 0;
     let docFinished = 0;
     let streamFinish = false;
-    // can be called before or after steam end depending on which callback gets called last
+    // can be called before or after steam end
+    // depending on which callback gets called last
     const finalFunc = () => {
       if (streamFinish && docCount === docFinished) {
         // if duds are removed in stream it will destroy topology
