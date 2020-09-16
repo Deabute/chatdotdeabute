@@ -33,6 +33,6 @@ Metalsmith(__dirname)
     }
   });
 
-if (process.env.TESTING === 't') {
-  require('./monolithic_server.js')();
-} // run static server if testing
+// if (process.env.TESTING === 't') {
+//   require('./monolithic_server.js')();
+// } // run static server if testing

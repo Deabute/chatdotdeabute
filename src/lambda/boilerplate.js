@@ -90,6 +90,7 @@ const mongo = {
       process.env.MONGODB_URI,
       {
         useNewUrlParser: true,
+        // useUnifiedTopology: true,
       },
       (connectionError, client) => {
         if (client) {

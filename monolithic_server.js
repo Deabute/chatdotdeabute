@@ -146,8 +146,8 @@ const serverless = {
   },
 };
 
-module.exports = () => {
-  app.use(express.static('build'));
+const serve = () => {
+  app.use(express.static(path.join(__dirname + '/build/')));
   const router = express.Router();
   router.get('/:erm', (req, res) => {
     res.status(200);
@@ -160,6 +160,7 @@ module.exports = () => {
   serverless.read(serverless.forFunctions(socket.on));
 };
 
+module.exports = serve;
 if (!module.parent) {
   serve();
 } // run server if called stand alone
