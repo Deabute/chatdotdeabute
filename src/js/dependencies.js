@@ -1,5 +1,5 @@
 // dependencies.js ~ copyright 2019-2020 ~ Paul Beaudet
-var rtc = {
+const rtc = {
   // stun servers in config allow client to introspect a communication path
   // to offer a remote peer
   config: {
@@ -15,7 +15,7 @@ var rtc = {
   lastPeer: '',
   connectionGwid: '',
   candidates: [],
-  onIce: function (event) {
+  onIce: event => {
     // on address info being introspected (after local description is set)
     if (event.candidate) {
       // candidate property denotes data as multiple candidates can resolve
@@ -25,27 +25,27 @@ var rtc = {
         rtc.signalIce();
         rtc.candidates = []; // remove it once we send it
       } else {
-        setTimeout(function () {
+        setTimeout(() => {
           rtc.onIce(event);
         }, 50);
       }
     }
   }, // Note that sdp is going to be negotiated first
   // regardless of any media being involved. its faster to resolve, maybe?
-  receiveIce: function (req) {
+  receiveIce: req => {
     console.log('getting ice from host');
-    for (var i = 0; i < req.candidates.length; i++) {
+    for (let i = 0; i < req.candidates.length; i++) {
       rtc.peer.addIceCandidate(req.candidates[i]);
     }
   },
-  init: function (onSetupCB, stream) {
+  init: (onSetupCB, stream) => {
     // verify media stream before calling
     rtc.peer = new RTCPeerConnection(rtc.config);
     // create new instance for local client
-    stream.getTracks().forEach(function (track) {
+    stream.getTracks().forEach(track => {
       rtc.peer.addTrack(track, stream);
     });
-    rtc.peer.ontrack = function (event) {
+    rtc.peer.ontrack = event => {
       document.getElementById('mediaStream').srcObject = event.streams[0];
     }; // behavior upon receiving track
     rtc.peer.onicecandidate = rtc.onIce;
@@ -53,44 +53,44 @@ var rtc = {
     onSetupCB();
     // create and offer or answer depending on what initiated
   },
-  createDataChannel: function (onCreation) {
-    var dataChannel = rtc.peer.createDataChannel('chat');
+  createDataChannel: onCreation => {
+    const dataChannel = rtc.peer.createDataChannel('chat');
     rtc.peer.ondatachannel = onCreation;
     // creates data endpoints for remote peer on rtc connection
     return dataChannel;
   },
-  createOffer: function () {
+  createOffer: () => {
     // extend offer to client so they can send it to remote
     rtc.peer
       .createOffer({ offerToReceiveAudio: 1, offerToReceiveVideo: 0 })
-      .then(function onOffer(desc) {
+      .then(desc => {
         // get sdp data to show user & share w/ friend
         return rtc.peer.setLocalDescription(desc);
         // note what sdp data self will use
       })
       .then(rtc.offerSignal);
   },
-  giveAnswer: function (sdp, oidFromOffer, gwidOfPartner) {
+  giveAnswer: (sdp, oidFromOffer, gwidOfPartner) => {
     rtc.peer.setRemoteDescription(sdp);
     rtc.connectionId = oidFromOffer;
     rtc.connectionGwid = gwidOfPartner;
     rtc.peer
       .createAnswer()
-      .then(function onAnswer(answer) {
+      .then(answer => {
         // create answer to remote peer that offered
         return rtc.peer.setLocalDescription(answer);
         // set that offer as our local description
       })
-      .then(function onOfferSetDesc() {
+      .then(() => {
         rtc.answerSignal(oidFromOffer, gwidOfPartner);
       });
   },
-  onAnswer: function (req) {
+  onAnswer: req => {
     rtc.connectionId = req.id;
     rtc.connectionGwid = req.gwid;
     rtc.peer.setRemoteDescription(req.sdp);
   },
-  close: function () {
+  close: () => {
     if (rtc.peer) {
       // clean up pre existing rtc connection if
       rtc.peer.close();
@@ -102,7 +102,7 @@ var rtc = {
   },
 };
 
-var dataPeer = {
+const dataPeer = {
   channel: null,
   ready: false,
   // other human is ready
@@ -111,19 +111,19 @@ var dataPeer = {
   talking: false,
   // WE, humans are talking
   peerName: '',
-  consent: function () {},
-  close: function () {
+  consent: () => {},
+  close: () => {
     rtc.close(dataPeer.talking);
     dataPeer.talking = false;
     dataPeer.ready = false;
     dataPeer.peerName = '';
   },
-  newChannel: function (event) {
+  newChannel: event => {
     const receiveChannel = event.channel;
     // receive channel events handlers created on connection
     dataPeer.on('terminate', dataPeer.close);
     dataPeer.on('ready', dataPeer.whenReady);
-    dataPeer.on('connect', function (req) {
+    dataPeer.on('connect', req => {
       dataPeer.peerName = req.username;
       console.log('connected to ' + req.username);
       dataPeer.consent(req.username);
@@ -133,37 +133,37 @@ var dataPeer = {
     });
     receiveChannel.onmessage = dataPeer.incoming;
     // handle events upon opening connection
-    receiveChannel.onopen = function onOpen() {
+    receiveChannel.onopen = () => {
       dataPeer.send({ action: 'connect', username: localStorage.username });
     };
   },
   handlers: [
     {
       action: 'msg',
-      func: function (req) {
+      func: req => {
         console.log(req.msg);
       },
     },
   ],
-  on: function (action, func) {
+  on: (action, func) => {
     dataPeer.handlers.push({ action: action, func: func });
   },
-  incoming: function (event) {
+  incoming: event => {
     // handle incoming rtc messages
-    var req = { action: null }; // request default
+    let req = { action: null }; // request default
     try {
       req = JSON.parse(event.data);
     } catch (error) {
       console.log(error);
     } // probably should be wrapped in error handler
-    for (var h = 0; h < dataPeer.handlers.length; h++) {
+    for (let h = 0; h < dataPeer.handlers.length; h++) {
       if (req.action === dataPeer.handlers[h].action) {
         dataPeer.handlers[h].func(req);
         return;
       }
     }
   },
-  send: function (sendObj) {
+  send: sendObj => {
     if (dataPeer.channel) {
       try {
         sendObj = JSON.stringify(sendObj);
@@ -174,7 +174,7 @@ var dataPeer = {
       dataPeer.channel.send(sendObj);
     }
   },
-  disconnect: function (human) {
+  disconnect: human => {
     if (human) {
       dataPeer.send({ action: 'disconnect' });
     } // tell friend we are done
@@ -182,7 +182,7 @@ var dataPeer = {
     dataPeer.onDisconnect();
     dataPeer.close();
   },
-  readySignal: function () {
+  readySignal: () => {
     dataPeer.clientReady = true;
     if (dataPeer.peerName) {
       dataPeer.send({ action: 'ready', username: localStorage.username });
@@ -191,7 +191,7 @@ var dataPeer = {
       dataPeer.setReconsentActive();
     }
   },
-  whenReady: function () {
+  whenReady: () => {
     if (dataPeer.ready) {
       dataPeer.talking = true;
       dataPeer.ready = false; // "we" are ready
@@ -200,7 +200,7 @@ var dataPeer = {
       dataPeer.ready = true;
     }
   },
-  onConfluence: function () {
+  onConfluence: () => {
     // happens at confluence time
     if (!dataPeer.talking) {
       // given conversation is a dud
@@ -220,36 +220,36 @@ var dataPeer = {
   },
 };
 
-var pool = {
+const pool = {
   indicator: document.getElementById('poolInd'),
   display: document.getElementById('pool'),
-  onOwner: function () {},
+  onOwner: () => {},
   count: 0,
   // assume peer is counted in pool
-  onIncrement: function (req) {
+  onIncrement: req => {
     if (req.owner) {
       pool.onOwner();
     }
     pool.count = pool.count + req.count;
     pool.display.innerHTML = pool.count;
   },
-  onSet: function (req) {
+  onSet: req => {
     pool.count = req.pool;
     pool.display.innerHTML = pool.count;
   },
 };
 
-var media = {
+const media = {
   stream: null,
-  init: function (onMedia) {
+  init: onMedia => {
     // get user permission to use media
-    var onMediaCallback = onMedia ? onMedia : function noSoupForYou() {};
+    const onMediaCallback = onMedia ? onMedia : () => {};
     navigator.mediaDevices
       .getUserMedia({ audio: true, video: false })
-      .then(function gotMedia(mediaStream) {
+      .then(mediaStream => {
         console.log('got media');
         media.stream = mediaStream;
-        var audioTracks = mediaStream.getAudioTracks();
+        const audioTracks = mediaStream.getAudioTracks();
         if (audioTracks.length) {
           if (audioTracks[0].enabled) {
             onMediaCallback(null, mediaStream);
@@ -261,12 +261,12 @@ var media = {
           onMediaCallback('woah! no audio', null);
         }
       })
-      .catch(function onNoMedia(error) {
+      .catch(error => {
         onMediaCallback(error, null);
       });
   },
-  switchAudio: function (on) {
-    var audioTracks = media.stream.getAudioTracks();
+  switchAudio: on => {
+    const audioTracks = media.stream.getAudioTracks();
     if (audioTracks.length) {
       if (on) {
         audioTracks[0].enabled = true;
@@ -277,7 +277,7 @@ var media = {
   },
 };
 
-var prompt = {
+const prompt = {
   caller: false,
   field: document.getElementById('promptField'),
   form: document.getElementById('promptForm'),
@@ -300,7 +300,7 @@ var prompt = {
     ],
   },
   answers: document.getElementById('formAnswers'),
-  create: function (questionObj, onAnswer) {
+  create: (questionObj, onAnswer) => {
     if (!prompt.form.hidden) {
       return;
     } // prevent one prompt from being created on top of other
@@ -308,14 +308,14 @@ var prompt = {
     prompt.form.hidden = false;
     // Show prompt form
     prompt.field.innerHTML = questionObj.question;
-    var answerBundle = document.createElement('div');
+    const answerBundle = document.createElement('div');
     answerBundle.id = 'answerBundle';
     prompt.answers.appendChild(answerBundle);
-    var halfway = Math.floor(questionObj.answers.length / 2);
+    const halfway = Math.floor(questionObj.answers.length / 2);
     // figure middle answer index
-    for (var i = 0; i < questionObj.answers.length; i++) {
-      var radioLabel = document.createElement('label');
-      var radioOption = document.createElement('input');
+    for (let i = 0; i < questionObj.answers.length; i++) {
+      const radioLabel = document.createElement('label');
+      const radioOption = document.createElement('input');
       if (i === halfway) {
         radioOption.checked = true;
       } // set default selection
@@ -332,21 +332,21 @@ var prompt = {
     }
     prompt.form.addEventListener(
       'submit',
-      function submitAnswer(event) {
+      event => {
         event.preventDefault();
-        var radios = document.getElementsByName('answer');
-        var unifiedIndex = 4 - halfway;
+        const radios = document.getElementsByName('answer');
+        const unifiedIndex = 4 - halfway;
         // determines relative start value from universal middle value
-        for (var entry = 0; entry < radios.length; entry++) {
+        for (let entry = 0; entry < radios.length; entry++) {
           // for all possible current question answers
           if (radios[entry].checked) {
             // find checked entry
-            var answer = {
+            const answer = {
               oid: rtc.lastPeer,
               score: unifiedIndex + entry,
               id: questionObj.id,
             };
-            for (var peer = 0; peer < persistence.answers.length; peer++) {
+            for (let peer = 0; peer < persistence.answers.length; peer++) {
               // for existing user answer entries
               if (
                 persistence.answers[peer].oid === rtc.lastPeer &&
@@ -372,7 +372,7 @@ var prompt = {
       false
     );
   },
-  onSubmit: function (whenDone, answer) {
+  onSubmit: (whenDone, answer) => {
     localStorage.answers = JSON.stringify(persistence.answers);
     // save any recorded answer
     prompt.caller = false;
@@ -383,9 +383,9 @@ var prompt = {
   },
 };
 
-var persistence = {
+const persistence = {
   answers: [],
-  init: function (onStorageLoad) {
+  init: onStorageLoad => {
     if (localStorage) {
       if (!localStorage.oid) {
         localStorage.oid = persistence.createOid();
@@ -409,14 +409,14 @@ var persistence = {
       onStorageLoad(false);
     }
   },
-  saveAnswer: function () {
+  saveAnswer: () => {
     localStorage.answers = JSON.stringify(persistence.answers);
   },
-  createOid: function () {
-    var increment = Math.floor(Math.random() * 16777216).toString(16);
-    var pid = Math.floor(Math.random() * 65536).toString(16);
-    var machine = Math.floor(Math.random() * 16777216).toString(16);
-    var timestamp = Math.floor(new Date().valueOf() / 1000).toString(16);
+  createOid: () => {
+    const increment = Math.floor(Math.random() * 16777216).toString(16);
+    const pid = Math.floor(Math.random() * 65536).toString(16);
+    const machine = Math.floor(Math.random() * 16777216).toString(16);
+    const timestamp = Math.floor(new Date().valueOf() / 1000).toString(16);
     return (
       '00000000'.substr(0, 8 - timestamp.length) +
       timestamp +
@@ -430,12 +430,12 @@ var persistence = {
   },
 };
 
-var ws = {
+const ws = {
   active: false,
   instance: null,
   // placeholder for websocket object
   server: document.getElementById('socketserver').innerHTML,
-  init: function (onConnection) {
+  init: onConnection => {
     if (ws.instance) {
       // makes it so that init function can be called liberally
       //  to assure that we are maintaining connection
@@ -444,10 +444,10 @@ var ws = {
       }
     } else {
       ws.instance = new WebSocket(ws.server);
-      ws.instance.onopen = function () {
+      ws.instance.onopen = () => {
         ws.active = true;
         ws.instance.onmessage = ws.incoming;
-        ws.instance.onclose = function onSocketClose() {
+        ws.instance.onclose = () => {
           ws.instance = null;
         };
         if (onConnection) {
@@ -456,7 +456,7 @@ var ws = {
       };
     }
   },
-  reduce: function (pause) {
+  reduce: pause => {
     if (ws.active) {
       ws.send({
         action: 'reduce',
@@ -468,9 +468,9 @@ var ws = {
     }
     ws.active = false;
   },
-  repool: function (answer) {
+  repool: answer => {
     if (!ws.active) {
-      var msg = {
+      const msg = {
         oid: localStorage.oid,
         owner: localStorage.paid === 'true' ? true : false,
         token: localStorage.token,
@@ -485,24 +485,24 @@ var ws = {
   handlers: [
     {
       action: 'msg',
-      func: function (req) {
+      func: req => {
         console.log(req.msg);
       },
     },
   ],
-  on: function (action, func) {
+  on: (action, func) => {
     ws.handlers.push({ action: action, func: func });
   },
-  incoming: function (event) {
+  incoming: event => {
     // handle incoming socket messages
-    var req = { action: null };
+    let req = { action: null };
     try {
       req = JSON.parse(event.data);
     } catch (error) {
       console.log(error);
     }
     // if error we don't care there is a default object
-    for (var h = 0; h < ws.handlers.length; h++) {
+    for (let h = 0; h < ws.handlers.length; h++) {
       if (req.action === ws.handlers[h].action) {
         ws.handlers[h].func(req);
         return;
@@ -514,24 +514,24 @@ var ws = {
     }
     console.log('no handler ' + event.data);
   },
-  send: function (msg) {
+  send: msg => {
     try {
       msg = JSON.stringify(msg);
     } catch (error) {
       msg = '{"action":"error","error":"failed stringify"}';
     }
-    ws.init(function () {
+    ws.init(() => {
       ws.instance.send(msg);
     });
   },
-  msg: function (action, json) {
+  msg: (action, json) => {
     json = json ? json : {};
     json.action = action;
     ws.send(json);
   },
 };
 
-var deabute = {
+const deabute = {
   signupButton: document.getElementById('signup'),
   loginButton: document.getElementById('login'),
   username: document.getElementById('username'),
@@ -540,21 +540,21 @@ var deabute = {
   credBox: document.getElementById('credBox'),
   status: document.getElementById('accountStatus'),
   accountAction: 'signup',
-  login: function () {
+  login: () => {
     deabute.display('login');
   },
-  signup: function () {
+  signup: () => {
     deabute.display('signup');
   },
-  display: function (action) {
+  display: action => {
     deabute.accountAction = action;
     deabute.accountOptions.hidden = true;
     deabute.status.hidden = false;
     deabute.credBox.hidden = false;
     // show sign up box
   },
-  submit: function () {
-    var regex = /^[a-z]+$/;
+  submit: () => {
+    const regex = /^[a-z]+$/;
     // make sure there are only lowercase a-z to the last letter
     if (deabute.username.value && deabute.password.value) {
       if (regex.test(deabute.username.value)) {
@@ -572,7 +572,7 @@ var deabute = {
       deabute.status.innerHTML = 'Missing information';
     }
   },
-  onUser: function (mine, channelName, username) {
+  onUser: (mine, channelName, username) => {
     if (mine) {
       deabute.status.innerHTML =
         'Hey ' + username + '! Welcome to your channel';
@@ -582,7 +582,7 @@ var deabute = {
     }
     deabute.status.hidden = false;
   },
-  onLogin: function (req) {
+  onLogin: req => {
     if (req.token && req.oid) {
       localStorage.oid = req.oid;
       localStorage.username = req.username;
@@ -593,16 +593,16 @@ var deabute = {
       deabute.status.innerHTML = 'Oops something when wrong';
     }
   },
-  onSignup: function () {
+  onSignup: () => {
     deabute.onUser(channel.mine, channel.name, deabute.username.value);
     deabute.credBox.hidden = true;
   },
-  rejected: function (req) {
+  rejected: req => {
     console.log('on rejected');
     deabute.status.innerHTML = req.msg;
     deabute.credBox.hidden = false;
   },
-  onFail: function (req) {
+  onFail: req => {
     deabute.status.innerHTML = req.msg;
   },
 };

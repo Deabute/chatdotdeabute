@@ -1,38 +1,38 @@
 // chat3.js ~ copyright 2019-2020 Paul Beaudet ~ MIT License
-var TIME_FOR_CONSENT = 30;
-var DAY_OF_WEEK = 1;
-var HOUR_OF_DAY = 12;
-var CONSENT_MINUTE = 58;
-var OPEN_MINUTE = CONSENT_MINUTE - 10;
-var CONFLUENCE_MINUTE = CONSENT_MINUTE;
-var CONSENT_SECOND = 3600 - (CONSENT_MINUTE * 60 + TIME_FOR_CONSENT);
-var CONFLUENCE_SECOND = 3600 - (CONFLUENCE_MINUTE * 60 + 50);
-var serviceTime = {
+const TIME_FOR_CONSENT = 30;
+let DAY_OF_WEEK = 1;
+let HOUR_OF_DAY = 12;
+const CONSENT_MINUTE = 58;
+const OPEN_MINUTE = CONSENT_MINUTE - 10;
+const CONFLUENCE_MINUTE = CONSENT_MINUTE;
+const CONSENT_SECOND = 3600 - (CONSENT_MINUTE * 60 + TIME_FOR_CONSENT);
+const CONFLUENCE_SECOND = 3600 - (CONFLUENCE_MINUTE * 60 + 50);
+const serviceTime = {
   DEBUG: false,
   begin: new Date(),
   countDown: 0,
   box: document.getElementById('timeBox'),
   WINDOW: document.getElementById('serviceWindow').innerHTML,
   sessionInd: document.getElementById('sessionInd'),
-  closed: function (millisTill) {
+  closed: millisTill => {
     serviceTime.begin.setUTCHours(HOUR_OF_DAY, 0);
     // set back to true begin time, always on hour
     app.outsideService();
     app.timeouts = setTimeout(serviceTime.open, millisTill);
     // open in upcoming window
   },
-  outside: function (day, utcHour) {
+  outside: (day, utcHour) => {
     DAY_OF_WEEK = typeof day === 'undefined' ? DAY_OF_WEEK : day;
     HOUR_OF_DAY = typeof utcHour === 'undefined' ? HOUR_OF_DAY : utcHour;
     serviceTime.sessionInd.hidden = false;
-    var dayNow = serviceTime.begin.getDay();
-    var dateNow = serviceTime.begin.getDate();
-    var timeNow = serviceTime.begin.getTime();
-    var endTime = new Date();
+    const dayNow = serviceTime.begin.getDay();
+    const dateNow = serviceTime.begin.getDate();
+    const timeNow = serviceTime.begin.getTime();
+    const endTime = new Date();
     serviceTime.begin.setDate(dateNow + (DAY_OF_WEEK - dayNow));
     serviceTime.begin.setUTCHours(HOUR_OF_DAY - 1, OPEN_MINUTE, 0, 0);
     // open window x minutes before actual begin
-    var millisBegin = serviceTime.begin.getTime();
+    const millisBegin = serviceTime.begin.getTime();
     endTime.setDate(dateNow + (DAY_OF_WEEK - dayNow));
     endTime.setUTCHours(HOUR_OF_DAY + 1, 0, 0, 0);
     if (millisBegin > timeNow) {
@@ -58,20 +58,20 @@ var serviceTime = {
     serviceTime.box.innerHTML = serviceTime.begin.toLocaleString();
     // display true begin time
   },
-  open: function () {
+  open: () => {
     serviceTime.begin.setUTCHours(HOUR_OF_DAY, 0);
     // set back to true begin time, always on hour
     app.proposition('Matching about to occur for this channel');
     // ask about name and microphone to start getting set up
   },
-  onWSConnect: function () {
+  onWSConnect: () => {
     app.waiting();
     const currentTime = new Date().getTime();
-    var startTime = serviceTime.begin.getTime();
+    const startTime = serviceTime.begin.getTime();
     if (currentTime < startTime) {
       // this is the case where we are counting down
-      var diff = startTime - currentTime;
-      var firstTimeout = diff;
+      const diff = startTime - currentTime;
+      let firstTimeout = diff;
       if (diff > 1000) {
         serviceTime.countDown = Math.floor(diff / 1000);
         firstTimeout = diff % 1000;
@@ -88,8 +88,8 @@ var serviceTime = {
       serviceTime.box.innerHTML = 'Currently matching users';
     }
   },
-  downCount: function () {
-    app.timeouts = setTimeout(function nextSecond() {
+  downCount: () => {
+    app.timeouts = setTimeout(() => {
       if (serviceTime.countDown) {
         serviceTime.box.innerHTML =
           Math.floor(serviceTime.countDown / 60) +
@@ -114,17 +114,17 @@ var serviceTime = {
   },
 };
 
-var DEFAULT_CHANNEL_NAME = 'deabute';
-var channel = {
+const DEFAULT_CHANNEL_NAME = 'deabute';
+const channel = {
   name: DEFAULT_CHANNEL_NAME,
   mine: false,
   type: 'multi',
   multi: true,
-  init: function (inChannel) {
-    var addressArray = window.location.href.split('/');
+  init: inChannel => {
+    const addressArray = window.location.href.split('/');
     if (addressArray.length === 4) {
-      var route = addressArray[3];
-      var regex = /^[a-z]+$/;
+      const route = addressArray[3];
+      const regex = /^[a-z]+$/;
       // make sure there are only lowercase a-z to the last letter
       if (regex.test(route)) {
         channel.name = route;
@@ -134,14 +134,14 @@ var channel = {
     }
     inChannel(channel.name);
   },
-  visitor: function (req) {
+  visitor: req => {
     if (req.status === 'ready') {
       app.proposition(channel.name + ' is ' + req.status);
     } else {
       app.description.innerHTML = channel.name + ' is ' + req.status;
     }
   },
-  status: function (req) {
+  status: req => {
     if (req.exist) {
       if (req.multi) {
         channel.multi = true;
@@ -171,14 +171,14 @@ var channel = {
   },
 };
 
-var app = {
+const app = {
   setupInput: document.getElementById('setupInput'),
   setupButton: document.getElementById('setupButton'),
   connectButton: document.getElementById('connectButton'),
   description: document.getElementById('description'),
   entered: false, // flags true when microphone is allowed
   timeouts: 0,
-  clearTimeouts: function () {
+  clearTimeouts: () => {
     if (app.timeouts > 0) {
       while (app.timeouts--) {
         clearTimeout(app.timeouts + 1);
@@ -186,13 +186,13 @@ var app = {
     }
     serviceTime.sessionInd.hidden = true;
   },
-  outsideService: function () {
+  outsideService: () => {
     app.setupButton.hidden = true;
     app.setupInput.hidden = true;
     app.description.innerHTML =
       'Please wait till our next scheduled matching to participate';
   },
-  proposition: function (welcomeMsg) {
+  proposition: welcomeMsg => {
     if (!app.entered) {
       app.setupButton.hidden = false;
       app.setupInput.hidden = false;
@@ -205,26 +205,26 @@ var app = {
       }
     }
   },
-  issue: function (issue) {
+  issue: issue => {
     console.log(issue);
     app.proposition(
       'Sorry maybe, Unmute, remove restriction of microphone in address bar and try again, reload, or use chrome/firefox?'
     );
   },
-  setup: function () {
+  setup: () => {
     app.setupButton.hidden = true;
     app.description.innerHTML = 'Please allow Microphone, in order to connect';
     localStorage.username = app.setupInput.value;
     app.setupInput.hidden = true;
-    media.init(function onMic(issue, mediaStream) {
+    media.init((issue, mediaStream) => {
       if (issue) {
         app.issue(issue);
       } else if (mediaStream) {
         app.description.innerHTML = 'Waiting for potential connections... ';
-        ws.init(function () {
+        ws.init(() => {
           // ws.init will have likely already been called to get status
           // connections can timeout in 2 minutes, needing a second init
-          var token = '';
+          let token = '';
           if (channel.multi) {
             channel.type = 'multi';
             serviceTime.onWSConnect();
@@ -234,7 +234,7 @@ var app = {
               token = localStorage.token;
             } // this will already be determined by status call
           }
-          dataPeer.consent = function (peer) {
+          dataPeer.consent = peer => {
             app.consent(peer);
           };
           app.entered = true;
@@ -252,9 +252,9 @@ var app = {
       }
     });
   },
-  disconnect: function (human) {
+  disconnect: human => {
     media.switchAudio(false);
-    prompt.create(prompt.review, function whenAnswered(answer) {
+    prompt.create(prompt.review, answer => {
       // closes rtc connection, order important
       ws.repool(answer);
       app.description.innerHTML = 'Waiting for potential connections... ';
@@ -264,63 +264,63 @@ var app = {
     app.description.innerHTML = '';
     app.connectButton.hidden = true;
   },
-  triggerConsent: function () {},
-  consent: function (peer) {
+  triggerConsent: () => {},
+  consent: peer => {
     peer = peer ? peer : 'peer';
     dataPeer.clientReady = false;
     if (serviceTime.countDown >= CONSENT_SECOND) {
-      app.triggerConsent = function () {
+      app.triggerConsent = () => {
         app.consent(peer);
-        app.triggerConsent = function () {};
+        app.triggerConsent = () => {};
         // reset trigger to an empty function
       };
       return;
       // given serviceTime is in countdown wait until it triggers consent
     }
-    var greet = 'Are you ready to chat?';
+    let greet = 'Are you ready to chat?';
     if (channel.mine) {
       greet = peer + ' would like to talk with you?';
     }
     app.description.innerHTML = greet;
     app.connectButton.innerHTML = 'Ready to talk';
-    app.connectButton.onclick = function oneClientReady() {
+    app.connectButton.onclick = () => {
       app.description.innerHTML = 'Waiting for ' + peer;
       app.connectButton.hidden = true;
       dataPeer.readySignal();
     };
     app.connectButton.hidden = false;
   },
-  whenConnected: function () {
+  whenConnected: () => {
     app.clearTimeouts();
     app.description.innerHTML = 'connected to ' + dataPeer.peerName;
-    app.connectButton.onclick = function () {
+    app.connectButton.onclick = () => {
       app.disconnect(true);
     };
     app.connectButton.innerHTML = 'Disconnect';
     app.connectButton.hidden = false;
   },
-  waiting: function () {
+  waiting: () => {
     app.description.innerHTML = 'Waiting for session to start';
     app.connectButton.hidden = true;
   },
 };
 
-var setup = {
+const setup = {
   // methods that are interconnected and intertwined with dependencies
-  ws: function () {
-    ws.on('offer', function (req) {
-      rtc.init(function (dataChannel) {
+  ws: () => {
+    ws.on('offer', req => {
+      rtc.init(dataChannel => {
         dataPeer.channel = rtc.createDataChannel(dataPeer.newChannel);
         rtc.giveAnswer(req.sdp, req.id, req.gwid);
       }, media.stream);
     });
     ws.on('answer', rtc.onAnswer);
     ws.on('ice', rtc.receiveIce);
-    ws.on('makeOffer', function (req) {
+    ws.on('makeOffer', req => {
       if (req.pool) {
         pool.onSet(req);
       }
-      rtc.init(function (dataChannel) {
+      rtc.init(dataChannel => {
         dataPeer.channel = rtc.createDataChannel(dataPeer.newChannel);
         rtc.createOffer();
       }, media.stream);
@@ -334,40 +334,40 @@ var setup = {
     ws.on('fail', deabute.onFail);
     ws.on('status', channel.status);
   },
-  dataPeer: function () {
+  dataPeer: () => {
     dataPeer.on('disconnect', app.disconnect);
-    dataPeer.onClose = function (talking) {
+    dataPeer.onClose = talking => {
       rtc.close(talking);
     };
-    dataPeer.inactiveOnConfluence = function () {
+    dataPeer.inactiveOnConfluence = () => {
       ws.reduce(true);
-      app.connectButton.onclick = function () {
+      app.connectButton.onclick = () => {
         dataPeer.clientReady = true;
         dataPeer.setReconsentInactive();
       };
     };
-    dataPeer.onDisconnect = function () {
+    dataPeer.onDisconnect = () => {
       ws.send({ action: 'pause', oid: localStorage.oid });
     };
-    dataPeer.onReady = function () {
+    dataPeer.onReady = () => {
       console.log('about to turn on microphone');
       media.switchAudio(true); // switch audio on
       ws.reduce(false); // reduce from connection pool
       app.whenConnected(); // change app to look like connected
     };
-    dataPeer.setReconsentInactive = function () {
+    dataPeer.setReconsentInactive = () => {
       ws.repool();
       app.timeouts = setTimeout(app.consent, TIME_FOR_CONSENT * 1000);
     };
-    dataPeer.setReconsentActive = function () {
+    dataPeer.setReconsentActive = () => {
       if (pool.count > 1) {
         ws.send({ action: 'unmatched', oid: localStorage.oid });
       } // let server know we can be rematched
       app.timeouts = setTimeout(app.consent, TIME_FOR_CONSENT * 1000);
     };
   },
-  rtc: function () {
-    rtc.signalIce = function () {
+  rtc: () => {
+    rtc.signalIce = () => {
       ws.send({
         action: 'ice',
         oid: localStorage.oid,
@@ -375,7 +375,7 @@ var setup = {
         gwid: rtc.connectionGwid,
       });
     };
-    rtc.offerSignal = function () {
+    rtc.offerSignal = () => {
       ws.send({
         action: 'offer',
         oid: localStorage.oid,
@@ -385,7 +385,7 @@ var setup = {
       }); // send offer to connect
       console.log('making offer');
     };
-    rtc.answerSignal = function (oidFromOffer, gwidOfPartner) {
+    rtc.answerSignal = (oidFromOffer, gwidOfPartner) => {
       console.log('sending answer to ' + oidFromOffer);
       ws.send({
         action: 'answer',
@@ -396,16 +396,16 @@ var setup = {
       });
     };
   },
-  pool: function () {
-    pool.onOwner = function () {
+  pool: () => {
+    pool.onOwner = () => {
       app.proposition(channel.name + ' is ready now');
     };
   },
 };
 
-persistence.init(function onLocalRead(capable) {
+persistence.init(capable => {
   if (capable) {
-    window.addEventListener('beforeunload', function (event) {
+    window.addEventListener('beforeunload', event => {
       event.returnValue = '';
       // TODO should do next two only when in app
       ws.msg('remove', {
@@ -416,9 +416,9 @@ persistence.init(function onLocalRead(capable) {
       dataPeer.close();
       app.clearTimeouts();
     });
-    channel.init(function (channelName) {
-      ws.init(function () {
-        var statusMsg = { channel: channelName, oid: localStorage.oid };
+    channel.init(channelName => {
+      ws.init(() => {
+        const statusMsg = { channel: channelName, oid: localStorage.oid };
         if (localStorage.token && localStorage.username) {
           deabute.status.innerHTML = '';
           statusMsg.token = localStorage.token;
