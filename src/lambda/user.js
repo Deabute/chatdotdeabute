@@ -1,10 +1,7 @@
-// user.js ~ functions for users to sign up and login ~ Copyright 2019 Paul Beaudet MIT license
-const path = require('path');
+// user.js ~ functions for users to sign up and login ~ Copyright 2019-2020 Paul Beaudet MIT license
 const bcrypt = require('bcryptjs');
-const { mongo, socket, parseBody } = require(path.join(
-  __dirname,
-  'boilerplate.js'
-));
+const { mongo } = require('./interface/mongo');
+const { socket, parseBody } = require('./interface/socket');
 
 const login = {
   findUser: (event, db, success, issue) => {

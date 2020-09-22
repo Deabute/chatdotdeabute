@@ -1,9 +1,6 @@
 // rtc.js ~ Copyright 2019-2020 Paul Beaudet ~ MIT License
-const path = require('path');
-const { mongo, socket, parseBody } = require(path.join(
-  __dirname,
-  'boilerplate.js'
-));
+const { mongo } = require('./interface/mongo');
+const { socket, parseBody } = require('./interface/socket');
 
 const rtc = {
   ice: (event, context, callback) => {
