@@ -331,66 +331,58 @@ const pool = {
       );
   },
   add: (event, context, callback) => {
-    event.body = parseBody(event.body);
-    if (event.body) {
-      event.body.channel = pool.channel(event.body);
-      if (event.body.oid) {
-        mongo.connect(
-          (db, client) => {
-            const issue = socket.issue(callback, client);
-            event.clientd = client;
-            const addToPool = () => {
-              pool.update(
-                db,
-                event,
-                () => {
-                  pool.notifyAddition(
-                    db,
-                    event,
-                    (free, poolSize) => {
-                      let resType = 'setPool';
-                      if (free % 2 === 0) {
-                        resType = 'makeOffer';
-                        console.log('telling client to make offer');
-                      }
-                      socket.response(
-                        event,
-                        { action: resType, pool: poolSize },
-                        () => {
-                          mongo.removeFromPool(client)();
-                          issue('unresponsive');
-                        },
-                        () => {
-                          prompt.recordAnswer(
-                            client,
-                            event,
-                            socket.success(callback, client),
-                            issue
-                          );
-                        } // on records error if response
-                      );
-                    },
-                    issue
-                  );
-                },
-                issue
-              );
-            };
-            if (event.body.token && event.body.owner) {
-              pool.ownerUpdate('ready', client, event, addToPool, issue);
-            } else {
-              addToPool();
-            }
-          },
-          () => {
-            socket.cb(callback, 'db connection issue');
-          },
-          mongo.pool
-        );
-      } else {
-        socket.cb(callback, 'validation issue');
-      }
+    event.body = parseBody(event.body, callback);
+    if (!event.body || !event.body.oid) {
+      socket.cb(callback, 'validation issue');
+      return;
     }
+    event.body.channel = pool.channel(event.body);
+    const onConnect = (db, client) => {
+      const issue = socket.issue(callback, client);
+      event.clientd = client;
+      const addToPool = () => {
+        pool.update(
+          db,
+          event,
+          () => {
+            pool.notifyAddition(
+              db,
+              event,
+              (free, poolSize) => {
+                const resType = free % 2 === 0 ? 'makeOffer' : 'setPool';
+                socket.response(
+                  event,
+                  { action: resType, pool: poolSize },
+                  () => {
+                    mongo.removeFromPool(client)();
+                    issue('unresponsive');
+                  },
+                  () => {
+                    prompt.recordAnswer(
+                      client,
+                      event,
+                      socket.success(callback, client),
+                      issue
+                    );
+                  } // on records error if response
+                );
+              },
+              issue
+            );
+          },
+          issue
+        );
+      };
+      if (event.body.token && event.body.owner) {
+        pool.ownerUpdate('ready', client, event, addToPool, issue);
+      } else {
+        addToPool();
+      }
+    };
+    const failedConnect = () => {
+      socket.cb(callback, 'db connection issue');
+    };
+    mongo.connect(onConnect, failedConnect, mongo.pool);
   },
   updateReduce: (client, event, success, issue) => {
     const done = event.body.pause ? 'done' : '';
